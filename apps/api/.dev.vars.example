@@ -1,0 +1,2 @@
+# Copy to .dev.vars. Without a key, login emails go to the wrangler console.
+RESEND_API_KEY=

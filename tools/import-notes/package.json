@@ -1,0 +1,15 @@
+{
+  "name": "@songbook/import-notes",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "convert": "tsx src/convert.ts",
+    "to-sql": "tsx src/to-sql.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@songbook/shared": "workspace:*"
+  }
+}

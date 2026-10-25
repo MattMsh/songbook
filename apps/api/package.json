@@ -1,0 +1,21 @@
+{
+  "name": "@songbook/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --ip 0.0.0.0",
+    "db:migrate": "wrangler d1 migrations apply songbook --local",
+    "db:seed": "wrangler d1 execute songbook --local --file seed.sql",
+    "typecheck": "wrangler types && tsc --noEmit",
+    "smoke": "bash scripts/smoke.sh"
+  },
+  "dependencies": {
+    "@songbook/shared": "workspace:*",
+    "hono": "^4.13.14",
+    "jose": "^6.2.13"
+  },
+  "devDependencies": {
+    "wrangler": "^4.152.0"
+  }
+}

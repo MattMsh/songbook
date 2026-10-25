@@ -1,0 +1,19 @@
+{
+  "name": "songbook",
+  "private": true,
+  "scripts": {
+    "db:migrate": "pnpm --filter @songbook/api db:migrate",
+    "db:seed": "pnpm --filter @songbook/import-notes to-sql ../../songs ../../apps/api/seed.sql && pnpm --filter @songbook/api db:seed",
+    "api": "pnpm --filter @songbook/api dev",
+    "mobile": "pnpm --filter @songbook/mobile start",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "smoke": "pnpm --filter @songbook/api smoke"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.0",
+    "@types/node": "^24.0.0"
+  }
+}

@@ -147,3 +147,11 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Songbook
+.wrangler/
+.dev.vars
+apps/api/seed.sql
+apps/api/worker-configuration.d.ts
+notes-export/
+import-out/

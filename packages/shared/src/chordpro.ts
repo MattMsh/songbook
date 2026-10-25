@@ -1,0 +1,277 @@
+import { detectNotation, type Notation } from './chords';
+
+export interface Segment {
+  chord: string | null;
+  text: string;
+}
+
+export type Line =
+  | { type: 'lyrics'; segments: Segment[] }
+  | { type: 'comment'; text: string }
+  | { type: 'empty' };
+
+export type SectionKind = 'verse' | 'chorus' | 'bridge' | null;
+
+export interface Section {
+  kind: SectionKind;
+  label: string | null;
+  lines: Line[];
+}
+
+export interface SongMeta {
+  title: string;
+  number: number | null;
+  key: string | null;
+  tempo: number | null;
+  time: string | null;
+  capo: number | null;
+  rhythm: string | null;
+  accents: number[] | null;
+  notation: Notation;
+  /** Source of the full lyrics (custom `{link}`). */
+  link: string | null;
+}
+
+export interface ParsedSong {
+  meta: SongMeta;
+  sections: Section[];
+  /** Unique chords in order of first appearance. */
+  chords: string[];
+}
+
+const ALIASES: Record<string, string> = {
+  t: 'title',
+  c: 'comment',
+  ci: 'comment',
+  cb: 'comment',
+  comment_italic: 'comment',
+  comment_box: 'comment',
+  soc: 'start_of_chorus',
+  eoc: 'end_of_chorus',
+  sov: 'start_of_verse',
+  eov: 'end_of_verse',
+  sob: 'start_of_bridge',
+  eob: 'end_of_bridge',
+};
+
+const START: Record<string, SectionKind> = {
+  start_of_chorus: 'chorus',
+  start_of_verse: 'verse',
+  start_of_bridge: 'bridge',
+};
+
+const DIRECTIVE_RE = /^\{\s*([A-Za-z_]+)\s*(?::\s*(.*?))?\s*\}$/;
+const CHORD_TAG_RE = /\[([^\]]*)\]/g;
+
+export function parseDirective(line: string): { name: string; value: string } | null {
+  const m = DIRECTIVE_RE.exec(line.trim());
+  if (!m) return null;
+  const name = m[1].toLowerCase();
+  return { name: ALIASES[name] ?? name, value: m[2] ?? '' };
+}
+
+export function parseLyricLine(line: string): Segment[] {
+  const segments: Segment[] = [];
+  let chord: string | null = null;
+  let last = 0;
+  for (const m of line.matchAll(CHORD_TAG_RE)) {
+    const text = line.slice(last, m.index);
+    if (text || chord !== null) segments.push({ chord, text });
+    chord = m[1].trim();
+    last = m.index! + m[0].length;
+  }
+  const rest = line.slice(last);
+  if (rest || chord !== null) segments.push({ chord, text: rest });
+  return segments;
+}
+
+const toInt = (v: string) => {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+export function parseAccents(v: string | null | undefined): number[] | null {
+  const list = (v ?? '').split(/[\s,]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  return list.length ? list : null;
+}
+
+export function parseChordPro(src: string): ParsedSong {
+  const meta: SongMeta = {
+    title: '',
+    number: null,
+    key: null,
+    tempo: null,
+    time: null,
+    capo: null,
+    rhythm: null,
+    accents: null,
+    notation: 'english',
+    link: null,
+  };
+  let explicitNotation: Notation | null = null;
+  const sections: Section[] = [];
+  let current: Section = { kind: null, label: null, lines: [] };
+  const chords = new Set<string>();
+  const startSection = (kind: SectionKind, label: string | null) => {
+    if (current.lines.length || current.label) sections.push(current);
+    current = { kind, label, lines: [] };
+  };
+
+  for (const raw of src.replace(/\r\n?/g, '\n').split('\n')) {
+    const line = raw.trimEnd();
+    if (line.trimStart().startsWith('#')) continue;
+    const d = parseDirective(line);
+    if (d) {
+      const v = d.value.trim();
+      switch (d.name) {
+        case 'title': meta.title = v; break;
+        case 'number': meta.number = toInt(v.replace(/^№\s*/, '')); break;
+        case 'key': meta.key = v || null; break;
+        case 'tempo': meta.tempo = toInt(v); break;
+        case 'time': meta.time = v || null; break;
+        case 'capo': meta.capo = toInt(v); break;
+        case 'rhythm': meta.rhythm = v || null; break;
+        case 'accents': meta.accents = parseAccents(v); break;
+        case 'notation': explicitNotation = v.toLowerCase() === 'german' ? 'german' : 'english'; break;
+        case 'comment': current.lines.push({ type: 'comment', text: v }); break;
+        case 'link': meta.link = v || null; break;
+        case 'chorus': {
+          // Standard ChordPro recall: repeat the last chorus here.
+          const last = [current, ...sections.slice().reverse()].find((x) => x.kind === 'chorus');
+          startSection('chorus', v || last?.label || 'Приспів');
+          if (last) current.lines = [...last.lines];
+          startSection(null, null);
+          break;
+        }
+        default:
+          if (d.name in START) startSection(START[d.name], v || null);
+          else if (d.name.startsWith('end_of_')) startSection(null, null);
+      }
+      continue;
+    }
+    if (!line.trim()) {
+      current.lines.push({ type: 'empty' });
+      continue;
+    }
+    const segments = parseLyricLine(line);
+    for (const s of segments) if (s.chord) chords.add(s.chord);
+    current.lines.push({ type: 'lyrics', segments });
+  }
+  startSection(null, null);
+
+  const chordList = [...chords];
+  meta.notation = explicitNotation ?? detectNotation(chordList);
+  return { meta, sections: trimEmpty(sections), chords: chordList };
+}
+
+function trimEmpty(sections: Section[]): Section[] {
+  for (const s of sections) {
+    while (s.lines[0]?.type === 'empty') s.lines.shift();
+    while (s.lines.at(-1)?.type === 'empty') s.lines.pop();
+  }
+  return sections.filter((s) => s.lines.length || s.label);
+}
+
+/** Lyrics without chords and directives, one line per lyric line. */
+export function lyricsText(song: ParsedSong): string {
+  const out: string[] = [];
+  for (const s of song.sections)
+    for (const l of s.lines)
+      if (l.type === 'lyrics' && !isChordOnlyLine(l.segments)) out.push(l.segments.map((x) => x.text).join('').trim());
+  return out.filter(Boolean).join('\n');
+}
+
+/** True when a line holds only chords (and bar marks / repeat marks). */
+export function isChordOnlyLine(segments: Segment[]): boolean {
+  return segments.some((s) => s.chord) && segments.every((s) => /^[\s|/:x×х\d()\-–—]*$/i.test(s.text));
+}
+
+/**
+ * Bars of a chord-only line such as `| [Am] - [F] | [C] - [G] |`.
+ * Chords inside one bar split it evenly. Null when the line has no bar lines.
+ */
+export function chordBars(segments: Segment[]): { bars: string[][]; rest: string } | null {
+  const tokens: (string | null)[] = []; // chord, or null for a bar line
+  let rest = '';
+  for (const s of segments) {
+    if (s.chord) tokens.push(s.chord);
+    for (const part of s.text.split(/(\|+)/)) {
+      if (part.startsWith('|')) tokens.push(null);
+      else rest += ' ' + part;
+    }
+  }
+  if (!tokens.includes(null)) return null;
+  const bars: string[][] = [[]];
+  for (const t of tokens) {
+    if (t === null) bars.push([]);
+    else bars.at(-1)!.push(t);
+  }
+  return { bars: bars.filter((b) => b.length), rest: rest.replace(/[\s:\-–—]+/g, ' ').trim() };
+}
+
+/** Denormalized columns the server stores next to the ChordPro source. */
+export function songFields(src: string) {
+  const { meta } = parseChordPro(src);
+  return {
+    number: meta.number,
+    title: meta.title || 'Без назви',
+    key: meta.key,
+    bpm: meta.tempo,
+    timeSig: meta.time,
+    rhythm: meta.rhythm,
+  };
+}
+
+/** Replaces the first `{name: …}` directive, or inserts it after `{title}` (or at the top). */
+export function setDirective(src: string, name: string, value: string | number | null): string {
+  const lines = src.split('\n');
+  const idx = lines.findIndex((l) => parseDirective(l)?.name === name);
+  const text = value === null ? null : `{${name}: ${value}}`;
+  if (idx >= 0) {
+    if (text === null) lines.splice(idx, 1);
+    else lines[idx] = text;
+  } else if (text !== null) {
+    const t = lines.findIndex((l) => parseDirective(l)?.name === 'title');
+    lines.splice(t + 1, 0, text);
+  }
+  return lines.join('\n');
+}
+
+export type PartKind = 'verse' | 'chorus' | 'bridge' | 'other';
+
+const PART_RE =
+  /^\s*(куплет|verse|приспів|припев|пр|chorus|бридж|брідж|мост|bridge|вступ|вступление|інтро|интро|intro|програш|проигрыш|interlude|instrumental|кода|кінцівка|концовка|outro|ending|тег|tag|передприспів|предприпев|pre-chorus)(?!\p{L})/iu;
+
+/** Song part named by a label such as «Приспів x2» or «Куплет 1»; null for other comments. */
+export function partKind(label: string): PartKind | null {
+  const word = PART_RE.exec(label)?.[1].toLowerCase();
+  if (!word) return null;
+  if (/^(куплет|verse)$/.test(word)) return 'verse';
+  if (/^(приспів|припев|пр|chorus)$/.test(word)) return 'chorus';
+  if (/^(бридж|брідж|мост|bridge)$/.test(word)) return 'bridge';
+  return 'other';
+}
+
+/** Directives the editor form owns; they live in the block at the top of the song. */
+export const FORM_DIRECTIVES = ['title', 'number', 'key', 'tempo', 'time', 'capo', 'rhythm', 'accents', 'notation', 'link'];
+
+/**
+ * Splits the leading block of form directives (and blank lines) from the rest.
+ * `head + body` is always the original text, so the form never reorders anything.
+ */
+export function splitHeader(src: string): { head: string; body: string } {
+  const lines = src.split('\n');
+  let i = 0;
+  while (i < lines.length && (!lines[i].trim() || FORM_DIRECTIVES.includes(parseDirective(lines[i])?.name ?? ''))) i++;
+  if (i === lines.length) return { head: src, body: '' };
+  return { head: lines.slice(0, i).map((l) => l + '\n').join(''), body: lines.slice(i).join('\n') };
+}
+
+/** Value of the first `{name: …}` directive, or null. */
+export function getDirective(src: string, name: string): string | null {
+  for (const line of src.split('\n')) {
+    const d = parseDirective(line);
+    if (d?.name === name) return d.value.trim();
+  }
+  return null;
+}
