@@ -1,0 +1,17 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://songbook-api-production.matvii-mashtalyar.workers.dev"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

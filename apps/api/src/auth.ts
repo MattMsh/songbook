@@ -59,6 +59,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function sendMail(env: Bindings, to: string, subject: string, text: string) {
   if (!env.RESEND_API_KEY) {
+    // Outside dev mode a logged code reaches nobody, so say plainly that email login is off.
+    if (env.DEV_MODE !== 'true') fail(503, 'provider_not_configured');
     console.log(`[mail] to: ${to}\n${subject}\n\n${text}`);
     return;
   }
@@ -127,7 +129,7 @@ export const auth = new Hono<AppEnv>()
     await sendMail(
       c.env,
       email,
-      `Код входу до Збірника: ${code}`,
+      `Код входу до Songbook: ${code}`,
       `Ваш код входу: ${code}\n\nАбо відкрийте посилання на телефоні:\n${link}\n\nКод діє 15 хвилин. Якщо ви не входили, просто проігноруйте цей лист.`,
     );
     return c.json(c.env.DEV_MODE === 'true' ? { ok: true, devCode: code, devToken: token } : { ok: true });

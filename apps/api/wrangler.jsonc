@@ -22,5 +22,27 @@
     "GOOGLE_ISSUER": "https://accounts.google.com",
     // Comma-separated OAuth client ids (iOS, Android, web).
     "GOOGLE_AUDIENCE": ""
+  },
+  // `wrangler deploy --env production`. ADMIN_EMAILS and RESEND_API_KEY are secrets
+  // (`wrangler secret put … --env production`), so they stay out of this public file.
+  "env": {
+    "production": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "songbook",
+          "database_id": "26f70d7b-fe47-4d4a-b46f-34d9168b082e",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "vars": {
+        "DEV_MODE": "false",
+        "MAIL_FROM": "Songbook <songbook@example.com>",
+        "APPLE_ISSUER": "https://appleid.apple.com",
+        "APPLE_AUDIENCE": "com.mattmsh.songbook",
+        "GOOGLE_ISSUER": "https://accounts.google.com",
+        "GOOGLE_AUDIENCE": ""
+      }
+    }
   }
 }

@@ -79,7 +79,7 @@ export interface UserRow {
 }
 
 const adminEmails = (env: Bindings) =>
-  new Set(env.ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean));
+  new Set((env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean));
 
 /** `ADMIN_EMAILS` always wins over the stored role. */
 export const toUser = (r: UserRow, env: Bindings): User => ({
