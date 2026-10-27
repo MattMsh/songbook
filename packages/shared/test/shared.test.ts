@@ -27,6 +27,7 @@ import {
   DEFAULT_PART_TYPES,
   matchPart,
   parsePartTypes,
+  clickBar,
 } from '../src';
 
 const SHARP = spellingFor(parseChord('G'));
@@ -201,6 +202,23 @@ describe('chordpro', () => {
     expect(id('Прийди')).toBeNull();
     expect(id('Нотація H/B: H — це сі')).toBeNull();
     expect(id('Завершение (тихо)')).toBe('ending');
+  });
+
+  it('renders one bar of clicks as a WAV file', () => {
+    const rate = 8000;
+    const wav = clickBar(120, ['strong', 'weak', 'weak'], rate);
+    const view = new DataView(wav.buffer);
+    const beat = rate / 2; // 120 BPM: half a second per beat
+    expect(new TextDecoder().decode(wav.slice(0, 4))).toBe('RIFF');
+    expect(view.getUint32(24, true)).toBe(rate);
+    expect(view.getUint32(40, true)).toBe(3 * beat * 2);
+    expect(wav.length).toBe(44 + 3 * beat * 2);
+    const sample = (i: number) => view.getInt16(44 + i * 2, true);
+    const peak = (from: number) => Math.max(...Array.from({ length: 100 }, (_, t) => Math.abs(sample(from + t))));
+    // Each beat starts with a click; the strong one is louder; silence in between.
+    expect(peak(0)).toBeGreaterThan(peak(beat) * 1.5);
+    expect(peak(2 * beat)).toBeGreaterThan(1000);
+    expect(sample(beat - 1)).toBe(0);
   });
 
   it('validates the admin block list', () => {

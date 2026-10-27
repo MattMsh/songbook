@@ -1,4 +1,4 @@
-import { DEFAULT_PART_TYPES, matchPart, type PartType } from '@songbook/shared';
+import { DEFAULT_PART_TYPES, matchPart, type PartColor, type PartType } from '@songbook/shared';
 import Storage from 'expo-sqlite/kv-store';
 import { useSyncExternalStore } from 'react';
 import { useSettings, useTheme } from './settings';
@@ -35,6 +35,10 @@ export function usePartStyle() {
   const types = usePartTypes();
   const { partColors } = useSettings().settings;
   const { colors } = useTheme();
-  const colorOf = (type: PartType) => colors.parts[partColors[type.id] ?? type.color];
+  // A picked colour is one shade for both themes; palette keys adapt to light and dark.
+  const colorOf = (type: PartType) => {
+    const own = partColors[type.id];
+    return own?.startsWith('#') ? own : colors.parts[(own as PartColor | undefined) ?? type.color];
+  };
   return { types, colorOf, match: (label: string) => matchPart(label, types) };
 }

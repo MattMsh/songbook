@@ -33,6 +33,7 @@ export default function PartColorsScreen() {
             label={type.name}
             value={own[type.id] ?? type.color}
             onChange={(color) => update({ partColors: { ...own, [type.id]: color } })}
+            onCustom={(hex) => update({ partColors: { ...own, [type.id]: hex.slice(0, 7) } })}
           />
         </Card>
       ))}

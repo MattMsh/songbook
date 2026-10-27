@@ -1,5 +1,6 @@
-import { beatGrid, startTicker, tapTempo, type Accent } from '@songbook/shared';
+import { beatGrid, clickBar, startTicker, tapTempo, type Accent } from '@songbook/shared';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
+import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -12,10 +13,12 @@ const HAPTIC: Record<Accent, Haptics.ImpactFeedbackStyle> = {
   weak: Haptics.ImpactFeedbackStyle.Light,
 };
 const SIZE: Record<Accent, number> = { strong: 26, medium: 20, weak: 14 };
-// The strong beat gets the high click; other beats the low one, softer on weak beats.
-const VOLUME: Record<Accent, number> = { strong: 1, medium: 1, weak: 0.5 };
 
-/** Metronome with sound, haptics and a visual beat; the ticker corrects timer drift against absolute time. */
+/**
+ * Metronome with sound, haptics and a visual beat. With sound on, one bar of clicks loops natively
+ * and the dots follow the player's position, so they never drift from what you hear. Without sound,
+ * a timer that corrects drift against absolute time drives the dots and haptics.
+ */
 export function Metronome({ bpm: initialBpm, time, accents }: { bpm: number | null; time: string | null; accents: number[] | null }) {
   const { colors } = useTheme();
   const t = useT();
@@ -25,27 +28,43 @@ export function Metronome({ bpm: initialBpm, time, accents }: { bpm: number | nu
   const [beat, setBeat] = useState(-1);
   const [haptics, setHaptics] = useState(true);
   const [sound, setSound] = useState(true);
-  const high = useAudioPlayer(require('../../assets/sounds/click-high.wav'));
-  const low = useAudioPlayer(require('../../assets/sounds/click-low.wav'));
+  const player = useAudioPlayer(null);
+  const pattern = grid.join('-');
   const taps = useRef<number[]>([]);
 
   useEffect(() => {
     if (!running) return setBeat(-1);
-    // Heard with the ring switch on silent, and mixed with the user's music instead of stopping it.
-    if (sound) setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' }).catch(() => {});
-    return startTicker(bpm, (n) => {
-      const i = n % grid.length;
-      const accent = grid[i];
+    const onBeat = (i: number) => {
       setBeat(i);
-      if (sound) {
-        const player = accent === 'strong' ? high : low;
-        player.volume = VOLUME[accent];
-        player.seekTo(0).catch(() => {});
-        player.play();
-      }
-      if (haptics) Haptics.impactAsync(HAPTIC[accent]).catch(() => {});
-    });
-  }, [running, bpm, haptics, sound, grid.length, high, low]);
+      if (haptics) Haptics.impactAsync(HAPTIC[grid[i]]).catch(() => {});
+    };
+    if (!sound) return startTicker(bpm, (n) => onBeat(n % grid.length));
+
+    let frame = 0;
+    let shown = -1;
+    let stopped = false;
+    (async () => {
+      // Heard with the ring switch on silent, and mixed with the user's music instead of stopping it.
+      await setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' }).catch(() => {});
+      const file = new File(Paths.cache, `metronome-${bpm}-${pattern}.wav`);
+      if (!file.exists) await file.write(clickBar(bpm, grid));
+      if (stopped) return;
+      player.replace({ uri: file.uri });
+      player.loop = true;
+      player.play();
+      const step = () => {
+        const i = Math.floor((player.currentTime * bpm) / 60) % grid.length;
+        if (i !== shown) onBeat((shown = i));
+        frame = requestAnimationFrame(step);
+      };
+      frame = requestAnimationFrame(step);
+    })();
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(frame);
+      player.pause();
+    };
+  }, [running, bpm, haptics, sound, pattern, player]);
 
   const tap = () => {
     taps.current = [...taps.current, Date.now()].slice(-10);

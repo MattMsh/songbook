@@ -1,9 +1,10 @@
 import { FlashList } from '@shopify/flash-list';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Banner, Field, ListItem, T } from '@/components/ui';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Banner, Field, Icon, ListItem, T } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
 import { searchSongs, useRevision, type SongListItem } from '@/lib/db';
 import { useSettings, useT, useTheme } from '@/lib/settings';
 import { syncNow, useSyncStatus } from '@/lib/sync';
@@ -14,6 +15,7 @@ export default function SongsScreen() {
   const { colors } = useTheme();
   const t = useT();
   const { mode } = useSettings().settings;
+  const admin = useAuth().user?.role === 'admin';
   const revision = useRevision();
   const sync = useSyncStatus();
   const [query, setQuery] = useState('');
@@ -29,6 +31,24 @@ export default function SongsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {/* Admins publish a new song; musicians suggest one for review. Readers only read. */}
+      <Stack.Screen
+        options={{
+          headerRight:
+            admin || mode === 'musician'
+              ? () => (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t(admin ? 'Нова пісня' : 'Запропонувати пісню')}
+                    hitSlop={8}
+                    style={{ paddingHorizontal: 6 }}
+                    onPress={() => router.push('/edit/new')}>
+                    <Icon name="add" size={22} color={colors.accent} />
+                  </Pressable>
+                )
+              : undefined,
+        }}
+      />
       <View style={styles.search}>
         <Field
           value={query}

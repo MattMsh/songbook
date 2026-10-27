@@ -20,8 +20,8 @@ export interface Settings {
   showLyrics: boolean;
   /** The first-run screen (language and mode) is done. */
   onboarded: boolean;
-  /** The user's own colour per song block id; blocks without one keep the admin's colour. */
-  partColors: Record<string, PartColor>;
+  /** The user's own colour per song block id: a palette key or a picked `#RRGGBB`. Blocks without one keep the admin's colour. */
+  partColors: Record<string, PartColor | string>;
 }
 
 /** The device's primary language if the app has it, else null (then the first-run screen asks). */

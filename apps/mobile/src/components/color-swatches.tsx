@@ -1,6 +1,7 @@
 import { PART_COLORS, type PartColor } from '@songbook/shared';
 import { Pressable, View } from 'react-native';
 import { useT, useTheme } from '@/lib/settings';
+import { CustomColor } from './custom-color';
 import { Icon } from './ui';
 
 const NAMES: Record<PartColor, string> = {
@@ -15,10 +16,25 @@ const NAMES: Record<PartColor, string> = {
   gray: 'Сірий',
 };
 
-/** One tappable circle per block colour, all in one row; the chosen one carries a check mark. */
-export function ColorSwatches({ value, onChange, label }: { value: PartColor; onChange: (color: PartColor) => void; label: string }) {
+/**
+ * One tappable circle per block colour, all in one row; the chosen one carries a check mark.
+ * With `onCustom`, the row ends with the system colour picker for any colour.
+ */
+export function ColorSwatches({
+  value,
+  onChange,
+  onCustom,
+  label,
+}: {
+  /** A palette key, or a picked `#RRGGBB`. */
+  value: string;
+  onChange: (color: PartColor) => void;
+  onCustom?: (hex: string) => void;
+  label: string;
+}) {
   const { colors } = useTheme();
   const t = useT();
+  const picked = value.startsWith('#') ? value : colors.parts[value as PartColor];
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
       {PART_COLORS.map((color) => (
@@ -30,9 +46,9 @@ export function ColorSwatches({ value, onChange, label }: { value: PartColor; on
           hitSlop={6}
           onPress={() => onChange(color)}
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
+            width: 30,
+            height: 30,
+            borderRadius: 15,
             backgroundColor: colors.parts[color],
             alignItems: 'center',
             justifyContent: 'center',
@@ -40,6 +56,7 @@ export function ColorSwatches({ value, onChange, label }: { value: PartColor; on
           {color === value && <Icon name="check" size={16} color={colors.bg} />}
         </Pressable>
       ))}
+      {onCustom && <CustomColor value={picked} onChange={onCustom} label={t('Свій колір')} />}
     </View>
   );
 }

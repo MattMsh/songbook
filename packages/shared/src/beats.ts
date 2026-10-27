@@ -55,3 +55,43 @@ export function startTicker(bpm: number, onTick: (n: number) => void, clock: Clo
   tick();
   return () => clock.clearTimeout(timer);
 }
+
+/** Click sound per beat accent: pitch in Hz and loudness 0..1. */
+const CLICK: Record<Accent, { freq: number; gain: number }> = {
+  strong: { freq: 1760, gain: 0.9 },
+  medium: { freq: 1175, gain: 0.9 },
+  weak: { freq: 1175, gain: 0.45 },
+};
+
+/**
+ * One bar of metronome clicks as a mono 16-bit WAV file. Looping the file natively keeps
+ * every beat exactly on time, which a JS timer starting each click cannot do.
+ */
+export function clickBar(bpm: number, grid: Accent[], rate = 22050): Uint8Array {
+  const beat = Math.round((rate * 60) / bpm);
+  const samples = beat * grid.length;
+  const clickLength = Math.min(beat, Math.round(rate * 0.04));
+  const view = new DataView(new ArrayBuffer(44 + samples * 2));
+  const ascii = (at: number, s: string) => [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + samples * 2, true);
+  ascii(8, 'WAVE');
+  ascii(12, 'fmt ');
+  view.setUint32(16, 16, true); // fmt chunk size
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  ascii(36, 'data');
+  view.setUint32(40, samples * 2, true);
+  grid.forEach((accent, i) => {
+    const { freq, gain } = CLICK[accent];
+    for (let t = 0; t < clickLength; t++) {
+      const v = gain * Math.exp(-t / (rate * 0.006)) * Math.sin((2 * Math.PI * freq * t) / rate);
+      view.setInt16(44 + (i * beat + t) * 2, Math.round(v * 32767), true);
+    }
+  });
+  return new Uint8Array(view.buffer);
+}
