@@ -1,5 +1,6 @@
-import { chordBars, isChordOnlyLine, partKind, type Line, type ParsedSong, type PartKind, type Segment } from '@songbook/shared';
+import { chordBars, isChordOnlyLine, type Line, type ParsedSong, type Segment } from '@songbook/shared';
 import { StyleSheet, Text, View } from 'react-native';
+import { usePartStyle } from '@/lib/parts';
 import { useTheme } from '@/lib/settings';
 
 interface Part {
@@ -50,22 +51,32 @@ export function ChordSheet({
   showLyrics?: boolean;
 }) {
   const { colors } = useTheme();
+  const parts = usePartStyle();
   const lyric = { color: colors.text, fontSize, lineHeight: fontSize * 1.35 };
-  // Each song part gets its own chord colour; verses and unlabelled parts keep the base one.
-  const partColor = (kind: PartKind | null) =>
-    kind === 'chorus' ? colors.chorus : kind === 'bridge' ? colors.bridge : kind === 'other' ? colors.other : colors.chord;
+  // Each song block gets its own chord colour; unlabelled parts keep the base one.
+  const partColor = (label: string | null) => {
+    const type = label ? parts.match(label) : null;
+    return type ? parts.colorOf(type) : null;
+  };
   const baseChord = { fontSize: fontSize * 0.85, fontWeight: '700' as const, lineHeight: fontSize * 1.15 };
 
   const renderLine = (line: Line, key: number, lines: Line[], color: string) => {
     const chordStyle = { ...baseChord, color };
     if (line.type === 'empty') return <View key={key} style={{ height: fontSize * 0.6 }} />;
     if (line.type === 'comment') {
-      const kind = partKind(line.text);
+      const isPart = !!partColor(line.text);
       // Readers don't need a label like «Програш» whose content is only chords.
       const next = lines.slice(key + 1).find((l) => l.type !== 'empty');
       if (!showChords && (!next || (next.type === 'lyrics' && isChordOnlyLine(next.segments)))) return null;
+      // A block name looks the same whether it comes from {soc: …} or a {c: …} comment.
+      if (isPart)
+        return (
+          <Text key={key} style={[styles.label, { color: showChords ? chordStyle.color : colors.muted, fontSize: fontSize * 0.75 }]}>
+            {labelText(line.text)}
+          </Text>
+        );
       return (
-        <Text key={key} style={[styles.comment, { color: kind && showChords ? chordStyle.color : colors.muted, fontSize: fontSize * 0.8 }]}>
+        <Text key={key} style={[styles.comment, { color: colors.muted, fontSize: fontSize * 0.8 }]}>
           {line.text}
         </Text>
       );
@@ -142,18 +153,16 @@ export function ChordSheet({
   return (
     <View style={{ gap: fontSize * 0.2 }}>
       {song.sections.map((section, s) => {
-        const kind = section.kind ?? (section.label ? partKind(section.label) : null);
-        const color = partColor(kind);
+        const labelColor = partColor(section.label);
+        const color = labelColor ?? colors.chord;
         // A label comment such as «Приспів» switches the colour from that line on.
         const lineColors: string[] = [];
-        for (const l of section.lines) {
-          const k = l.type === 'comment' ? partKind(l.text) : null;
-          lineColors.push(k ? partColor(k) : (lineColors.at(-1) ?? color));
-        }
+        for (const l of section.lines)
+          lineColors.push((l.type === 'comment' && partColor(l.text)) || (lineColors.at(-1) ?? color));
         return (
           <View key={s} style={section.kind === 'chorus' && [styles.chorus, { borderColor: showChords ? color : colors.accent }]}>
             {section.label && (
-              <Text style={[styles.label, { color: kind && showChords ? color : colors.muted, fontSize: fontSize * 0.75 }]}>
+              <Text style={[styles.label, { color: labelColor && showChords ? color : colors.muted, fontSize: fontSize * 0.75 }]}>
                 {labelText(section.label)}
               </Text>
             )}

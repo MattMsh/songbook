@@ -1,8 +1,9 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { SharedAlbum, SyncPage } from '@songbook/shared';
+import type { PartType, SharedAlbum, SyncPage } from '@songbook/shared';
 import { useSyncExternalStore } from 'react';
 import { api, ApiError, errorMessage } from './api';
 import { applySharedAlbums, applySyncPage, bumpRevision, getCursor } from './db';
+import { setPartTypes } from './parts';
 
 export interface SyncStatus {
   syncing: boolean;
@@ -52,6 +53,7 @@ async function run(db: SQLiteDatabase) {
       if (res.songs.length) bumpRevision();
       if (!res.hasMore) break;
     }
+    setPartTypes(await api<PartType[]>('/parts'));
     await syncSharedAlbums(db);
     setStatus({ syncing: false, error: null, lastSyncAt: Date.now() });
   } catch (e) {

@@ -3,6 +3,7 @@ import { Color } from 'expo-router';
 import Storage from 'expo-sqlite/kv-store';
 import { createContext, use, useMemo, useState, type ReactNode } from 'react';
 import { Appearance, Platform, useColorScheme, type ColorValue } from 'react-native';
+import type { PartColor } from '@songbook/shared';
 import { setLanguage, translate, type Language, type Params } from './i18n';
 
 export interface Settings {
@@ -19,6 +20,8 @@ export interface Settings {
   showLyrics: boolean;
   /** The first-run screen (language and mode) is done. */
   onboarded: boolean;
+  /** The user's own colour per song block id; blocks without one keep the admin's colour. */
+  partColors: Record<string, PartColor>;
 }
 
 /** The device's primary language if the app has it, else null (then the first-run screen asks). */
@@ -37,6 +40,7 @@ const DEFAULTS: Settings = {
   toolsOpen: true,
   showLyrics: true,
   onboarded: false,
+  partColors: {},
 };
 const KEY = 'settings';
 
@@ -107,9 +111,6 @@ const CONTENT = {
   light: {
     chord: '#C2410C',
     onChord: '#FFFFFF',
-    chorus: '#BE123C',
-    bridge: '#6D28D9',
-    other: '#0369A1',
     success: '#15803D',
     add: '#DCFCE7',
     del: '#FEE2E2',
@@ -117,15 +118,40 @@ const CONTENT = {
   dark: {
     chord: '#FDBA74',
     onChord: '#000000',
-    chorus: '#FB7185',
-    bridge: '#C4B5FD',
-    other: '#7DD3FC',
     success: '#4ADE80',
     add: '#14532D',
     del: '#7F1D1D',
   },
 };
-const PALETTE = { light: { ...SYSTEM, ...CONTENT.light }, dark: { ...SYSTEM, ...CONTENT.dark } };
+/** Song block colours by key: dark text shades on light backgrounds, light ones on dark. */
+const PARTS: Record<'light' | 'dark', Record<PartColor, string>> = {
+  light: {
+    orange: '#C2410C',
+    red: '#BE123C',
+    pink: '#BE185D',
+    violet: '#6D28D9',
+    blue: '#0369A1',
+    teal: '#0F766E',
+    green: '#15803D',
+    yellow: '#A16207',
+    gray: '#4B5563',
+  },
+  dark: {
+    orange: '#FDBA74',
+    red: '#FB7185',
+    pink: '#F9A8D4',
+    violet: '#C4B5FD',
+    blue: '#7DD3FC',
+    teal: '#5EEAD4',
+    green: '#86EFAC',
+    yellow: '#FDE047',
+    gray: '#D1D5DB',
+  },
+};
+const PALETTE = {
+  light: { ...SYSTEM, ...CONTENT.light, parts: PARTS.light },
+  dark: { ...SYSTEM, ...CONTENT.dark, parts: PARTS.dark },
+};
 
 export type Colors = typeof PALETTE.light;
 

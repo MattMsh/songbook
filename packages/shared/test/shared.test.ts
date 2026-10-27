@@ -24,6 +24,9 @@ import {
   transposeChord,
   spellingFor,
   type Clock,
+  DEFAULT_PART_TYPES,
+  matchPart,
+  parsePartTypes,
 } from '../src';
 
 const SHARP = spellingFor(parseChord('G'));
@@ -187,6 +190,29 @@ describe('chordpro', () => {
     ]);
     expect(partKind('Прийди')).toBeNull();
     expect(partKind('Нотація H/B: H — це сі')).toBeNull();
+  });
+
+  it('matches song blocks by name and alias', () => {
+    const id = (label: string) => matchPart(label, DEFAULT_PART_TYPES)?.id ?? null;
+    expect(['Куплет 1', 'ПРИСПІВ x2', 'Пр.', 'Припев', 'Бридж x3', 'Outro', 'Вступление', 'Заспів', 'Pre-chorus 2', 'Чорус'].map(id)).toEqual([
+      'verse', 'chorus', 'chorus', 'chorus', 'bridge', 'ending', 'intro', 'prechorus', 'prechorus', null,
+    ]);
+    // Whole words only: «Прийди» is a lyric, not «Пр».
+    expect(id('Прийди')).toBeNull();
+    expect(id('Нотація H/B: H — це сі')).toBeNull();
+    expect(id('Завершение (тихо)')).toBe('ending');
+  });
+
+  it('validates the admin block list', () => {
+    expect(parsePartTypes(DEFAULT_PART_TYPES)).toEqual(DEFAULT_PART_TYPES);
+    expect(parsePartTypes([{ id: 'a', name: ' Тег ', aliases: [' Tag ', ''], color: 'gray' }])).toEqual([
+      { id: 'a', name: 'Тег', aliases: ['Tag'], color: 'gray' },
+    ]);
+    expect(parsePartTypes([])).toEqual({ error: 'types' });
+    expect(parsePartTypes([{ id: 'a', name: 'X', aliases: [], color: 'purple' }])).toEqual({ error: 'color' });
+    expect(parsePartTypes([{ id: 'a', name: '', aliases: [], color: 'red' }])).toEqual({ error: 'name' });
+    const dup = { id: 'a', name: 'X', aliases: [], color: 'red' };
+    expect(parsePartTypes([dup, dup])).toEqual({ error: 'id' });
   });
 
   it('repeats the last chorus and reads the link', () => {

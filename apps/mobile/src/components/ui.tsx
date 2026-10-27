@@ -40,6 +40,9 @@ const ICONS = {
   people: { ios: 'person.2', android: 'group' },
   lyrics: { ios: 'text.alignleft', android: 'notes' },
   addToAlbum: { ios: 'text.badge.plus', android: 'playlist_add' },
+  check: { ios: 'checkmark', android: 'check' },
+  palette: { ios: 'paintpalette', android: 'palette' },
+  blocks: { ios: 'square.stack.3d.up', android: 'view_agenda' },
   checked: { ios: 'checkmark.circle.fill', android: 'check_circle' },
   globe: { ios: 'globe', android: 'language' },
   singer: { ios: 'music.mic', android: 'mic' },
@@ -82,6 +85,7 @@ export function Screen({ children, padded = true }: { children: ReactNode; padde
       style={{ backgroundColor: colors.bg }}
       contentContainerStyle={padded && styles.screen}
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
       contentInsetAdjustmentBehavior="automatic">
       {children}
     </ScrollView>

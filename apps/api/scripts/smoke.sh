@@ -169,6 +169,19 @@ check "musician delete 200" 200 "$STATUS"
 req GET /albums "$MUSICIAN"
 check "list empty after delete" 0 "$(field length)"
 
+echo "== song blocks"
+req GET /parts
+check "defaults for everyone" "intro,verse,chorus,interlude,bridge,prechorus,ending" "$(field 'map(.id) | join(",")')"
+req PUT /parts "$MUSICIAN" '{"types":[{"id":"verse","name":"Куплет","aliases":[],"color":"orange"}]}'
+check "musician edit → 403" 403 "$STATUS"
+req PUT /parts "$ADMIN" '{"types":[{"id":"verse","name":"Куплет","aliases":[],"color":"purple"}]}'
+check "unknown colour → 400" 400 "$STATUS"
+check "error names the field" color "$(field .field)"
+req PUT /parts "$ADMIN" '{"types":[{"id":"verse","name":" Куплет ","aliases":["Verse"],"color":"blue"},{"id":"tag","name":"Тег","aliases":[],"color":"gray"}]}'
+check "admin edit 200" 200 "$STATUS"
+req GET /parts
+check "list shows the edit" "Куплет:blue,Тег:gray" "$(field 'map(.name + ":" + .color) | join(",")')"
+
 echo
 echo "$PASSED passed, $FAILED failed"
 [[ $FAILED -eq 0 ]]

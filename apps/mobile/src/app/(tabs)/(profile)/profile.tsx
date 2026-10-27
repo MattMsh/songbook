@@ -50,6 +50,7 @@ export default function ProfileScreen() {
 
       <H>{t('Тема')}</H>
       <Choice name="theme" options={[['system', t('Системна')], ['light', t('Світла')], ['dark', t('Темна')]]} />
+      <Button kind="secondary" icon="palette" title={t('Кольори блоків')} onPress={() => router.push('/part-colors')} />
 
       <H>{t('Акаунт')}</H>
       {user ? (
@@ -64,6 +65,7 @@ export default function ProfileScreen() {
             <Row wrap>
               <Button small kind="secondary" icon="queue" title={t('Черга пропозицій')} onPress={() => router.push('/admin/queue')} />
               <Button small kind="secondary" icon="people" title={t('Користувачі')} onPress={() => router.push('/admin/users')} />
+              <Button small kind="secondary" icon="blocks" title={t('Блоки пісень')} onPress={() => router.push('/admin/parts')} />
             </Row>
           )}
           <Button small kind="ghost" title={t('Вийти')} onPress={logout} />
