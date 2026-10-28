@@ -1,4 +1,5 @@
 import { detectNotation, type Notation } from './chords';
+import { DEFAULT_GRID_SHAPE, gridChords, parseGridDirective, type ChordGrid } from './grids';
 
 export interface Segment {
   chord: string | null;
@@ -8,7 +9,8 @@ export interface Segment {
 export type Line =
   | { type: 'lyrics'; segments: Segment[] }
   | { type: 'comment'; text: string }
-  | { type: 'empty' };
+  | { type: 'empty' }
+  | { type: 'grid'; grid: ChordGrid };
 
 export type SectionKind = 'verse' | 'chorus' | 'bridge' | null;
 
@@ -53,6 +55,8 @@ const ALIASES: Record<string, string> = {
   eov: 'end_of_verse',
   sob: 'start_of_bridge',
   eob: 'end_of_bridge',
+  sog: 'start_of_grid',
+  eog: 'end_of_grid',
 };
 
 const START: Record<string, SectionKind> = {
@@ -61,14 +65,28 @@ const START: Record<string, SectionKind> = {
   start_of_bridge: 'bridge',
 };
 
-const DIRECTIVE_RE = /^\{\s*([A-Za-z_]+)\s*(?::\s*(.*?))?\s*\}$/;
+const DIRECTIVE_RE = /^\{\s*([A-Za-z_][A-Za-z_\d-]*)(.*?)\s*\}$/;
 const CHORD_TAG_RE = /\[([^\]]*)\]/g;
 
-export function parseDirective(line: string): { name: string; value: string } | null {
+export function parseDirective(line: string): { name: string; value: string; attributes?: Record<string, string> } | null {
   const m = DIRECTIVE_RE.exec(line.trim());
   if (!m) return null;
-  const name = m[1].toLowerCase();
-  return { name: ALIASES[name] ?? name, value: m[2] ?? '' };
+  const name = ALIASES[m[1].toLowerCase()] ?? m[1].toLowerCase();
+  const tail = m[2].trim();
+  if (!tail || tail.startsWith(':')) return { name, value: tail.replace(/^:\s*/, '') };
+  const attributes: Record<string, string> = Object.create(null);
+  const pattern = /([A-Za-z_][\w-]*)\s*=\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^\s"']+))/gy;
+  let at = 0;
+  while (at < tail.length) {
+    pattern.lastIndex = at;
+    const attribute = pattern.exec(tail);
+    if (!attribute) return null;
+    attributes[attribute[1].toLowerCase()] = (attribute[2] ?? attribute[3] ?? attribute[4]).replace(/\\([\\"'])/g, '$1');
+    at = pattern.lastIndex;
+    if (at < tail.length && !/\s/.test(tail[at])) return null;
+    while (/\s/.test(tail[at] ?? '') && at < tail.length) at++;
+  }
+  return { name, value: '', attributes };
 }
 
 export function parseLyricLine(line: string): Segment[] {
@@ -130,12 +148,27 @@ export function parseChordPro(src: string): ParsedSong {
     current = { kind, label, lines: [] };
   };
 
-  for (const raw of src.replace(/\r\n?/g, '\n').split('\n')) {
+  const sourceLines = src.replace(/\r\n?/g, '\n').split('\n');
+  let gridShape = DEFAULT_GRID_SHAPE;
+  for (let index = 0; index < sourceLines.length; index++) {
+    const raw = sourceLines[index];
     const line = raw.trimEnd();
     if (line.trimStart().startsWith('#')) continue;
     const d = parseDirective(line);
     if (d) {
-      const v = d.value.trim();
+      const v = (d.attributes?.label ?? d.value).trim();
+      if (d.name === 'start_of_grid') {
+        const body: string[] = [];
+        while (index + 1 < sourceLines.length && parseDirective(sourceLines[index + 1])?.name !== 'end_of_grid') body.push(sourceLines[++index]);
+        const closed = index + 1 < sourceLines.length;
+        if (closed) index++;
+        const grid = parseGridDirective(body.join('\n'), d, gridShape);
+        if (!closed) grid.issues.push('unclosed');
+        gridShape = grid.shape;
+        for (const chord of gridChords(grid)) chords.add(chord);
+        current.lines.push({ type: 'grid', grid });
+        continue;
+      }
       switch (d.name) {
         case 'title': meta.title = v; break;
         case 'tags': meta.tags = parseTags([...meta.tags, v].join(',')); break;

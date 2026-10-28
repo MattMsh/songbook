@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { usePartStyle } from '@/lib/parts';
 import { useSettings, useT, useTheme } from '@/lib/settings';
 import { ChordDiagram } from './chord-diagram';
+import { ChordGrid } from './chord-grid';
 
 interface Part {
   chord: string | null;
@@ -87,11 +88,13 @@ export function ChordSheet({
   const renderLine = (line: Line, key: number, lines: Line[], color: string) => {
     const chordStyle = { ...baseChord, color };
     if (line.type === 'empty') return <View key={key} style={{ height: fontSize * 0.6 }} />;
+    if (line.type === 'grid') return showChords ? <ChordGrid key={key} grid={line.grid} mapChord={mapChord} fontSize={fontSize}
+      color={color} onChordPress={chord => setSelectedChord(mapChord(chord))} /> : null;
     if (line.type === 'comment') {
       const isPart = !!partColor(line.text);
       // Readers don't need a label like «Програш» whose content is only chords.
       const next = lines.slice(key + 1).find((l) => l.type !== 'empty');
-      if (!showChords && (!next || (next.type === 'lyrics' && isChordOnlyLine(next.segments)))) return null;
+      if (!showChords && (!next || next.type === 'grid' || (next.type === 'lyrics' && isChordOnlyLine(next.segments)))) return null;
       // A block name looks the same whether it comes from {soc: …} or a {c: …} comment.
       if (isPart)
         return (

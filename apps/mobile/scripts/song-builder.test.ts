@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { metaInput, setMetaInput } from '../src/lib/song-meta';
 import { parseChordPro } from '@songbook/shared';
-import { insertChord, newBlock, readBlocks, splitBlock, writeBlocks } from '../src/lib/song-builder';
+import { insertChord, newBlock, newGridBlock, readBlocks, splitBlock, writeBlocks } from '../src/lib/song-builder';
 
 describe('lossless song blocks', () => {
   it.each([
@@ -40,6 +40,35 @@ describe('lossless song blocks', () => {
     const block = newBlock('Куплет 1', '\nWords\n');
     expect(splitBlock(block, 0, 'Приспів')).toEqual([block]);
     expect(splitBlock(block, block.text.length, 'Приспів')).toEqual([block]);
+  });
+});
+
+describe('grid blocks', () => {
+  it.each([
+    '{sog: 4 Intro}\r\n| C  . G/B . |\r\n{eog}\r\n\r\n',
+    '{c: Куплет 1}\n[A]Words\n{start_of_grid shape="1x4" label="Вступ"}\n|S dn~up . dx x |\n{end_of_grid}\nUnlabelled words\n{c: Приспів}\nMore',
+    '{sog}\n| C . |\n{eog}',
+  ])('round-trips grid source without normalization', source => {
+    expect(writeBlocks(readBlocks(source)!)).toBe(source);
+  });
+  it('creates standard grids and strums and can reorder them', () => {
+    const grid = newGridBlock('Сітка');
+    const strum = newGridBlock('Бій', true);
+    const blocks = readBlocks(writeBlocks([grid, newBlock('Куплет 1', '[C]Words'), strum]))!;
+    expect(blocks.map(b => b.kind)).toEqual(['grid', undefined, 'grid']);
+    const reordered = writeBlocks([blocks[2], blocks[0], blocks[1]]);
+    expect(reordered.indexOf('|S')).toBeLessThan(reordered.indexOf('| . . . . |'));
+    expect(parseChordPro(reordered).sections.flatMap(s => s.lines).filter(l => l.type === 'grid')).toHaveLength(2);
+  });
+  it('falls back to source for unclosed or nested grid environments', () => {
+    expect(readBlocks('{sog}\n| C |')).toBeNull();
+    expect(readBlocks('{sog}\n{custom: keep}\n{eog}')).toBeNull();
+  });
+  it('keeps endings intact when a grid body is edited without a trailing newline', () => {
+    const block = newGridBlock('Бій', true);
+    block.text = '|S d+ . up x |';
+    expect(writeBlocks([block])).toContain('|S d+ . up x |\n{end_of_grid}');
+    expect(newGridBlock('Bad"\n{title: x}').marker).not.toContain('\n{title:');
   });
 });
 

@@ -1,5 +1,6 @@
 export * from './beats';
 export * from './chordpro';
+export * from './grids';
 export * from './chords';
 export * from './chord-diagrams';
 export * from './plans';

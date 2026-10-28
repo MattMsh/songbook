@@ -26,7 +26,7 @@ export async function createPdfDocument(db: SQLiteDatabase, target: ExportTarget
   }
   return { ...plan, title: target.songId ? songs[0].title! : album!.name, songs, variant, notation,
     labels: { verse: t('Куплет'), chorus: t('Приспів'), bridge: t('Бридж'), key: t('Тональність'),
-      capo: t('Капо'), leader: t('Ведучий'), notes: t('Нотатки') } };
+      gridSource: t('Вихідна схема без транспозиції'), capo: t('Капо'), leader: t('Ведучий'), notes: t('Нотатки') } };
 }
 
 /** Keep the temporary file until the native share sheet finishes, then remove it on every exit. */

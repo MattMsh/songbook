@@ -1,8 +1,9 @@
 import { partKind } from '@songbook/shared';
 import { BuilderMenu } from './builder-menu';
+import { GridEditor } from './grid-editor';
 import { useRef, useState } from 'react';
 import { Alert, Keyboard, View } from 'react-native';
-import { insertChord, newBlock, readBlocks, splitBlock, writeBlocks, type SongBlock } from '@/lib/song-builder';
+import { insertChord, newBlock, newGridBlock, readBlocks, splitBlock, writeBlocks, type SongBlock } from '@/lib/song-builder';
 import { useT, useTheme } from '@/lib/settings';
 import { Banner, Button, Field, H, T } from './ui';
 
@@ -20,10 +21,11 @@ export function SongBuilder({ value, onChange, chords, german }: {
   const raw = source || !blocks;
   const palette = [...new Set([...chords, ...CHORDS.map(c => german && c !== 'Bb' ? c.replace(/B/g, 'H') : c)])];
   const update = (next: SongBlock[]) => onChange(writeBlocks(next));
-  const title = (index: number) => blocks?.[index]?.label || t('Текст без назви');
+  const title = (index: number) => blocks?.[index]?.label || t(blocks?.[index]?.kind === 'grid' ? 'Сітка акордів' : 'Текст без назви');
   const verseNumber = Math.max(0, ...(blocks ?? []).filter(b => partKind(b.label) === 'verse').map(b => Number(/\d+/.exec(b.label)?.[0]) || 0)) + 1;
   const labelFor = (type: string) => type === 'Куплет' ? `${t(type)} ${verseNumber}` : t(type);
   const typeActions = TYPES.map(type => ({ id: type, title: t(type) }));
+  const addActions = [...typeActions, { id: 'grid', title: t('Сітка акордів') }, { id: 'strum', title: t('Схема бою') }];
 
   function addChord(index: number, chord: string) {
     const text = index < 0 ? value : blocks![index].text;
@@ -73,12 +75,13 @@ export function SongBuilder({ value, onChange, chords, german }: {
         <View style={{ gap: 8 }}>
           <T accessibilityRole="header" style={{ fontWeight: '600' }}>{title(index)}</T>
           <BuilderMenu title={t('Дії')} label={t('Дії з блоком {name}', { name: title(index) })} actions={[
-            { title: t('Тип блоку'), subactions: typeActions },
+            ...(block.kind === 'grid' ? [] : [{ title: t('Тип блоку'), subactions: typeActions }]),
             { id: 'up', title: t('Перемістити вище'), attributes: { disabled: index === 0 } },
             { id: 'down', title: t('Перемістити нижче'), attributes: { disabled: index === blocks.length - 1 } },
             { id: 'delete', title: t('Видалити блок'), attributes: { destructive: true } },
           ]} onAction={action => blockAction(index, action)} />
         </View>
+        {block.kind === 'grid' ? <GridEditor block={block} palette={palette} onChange={text => update(blocks.map((b, i) => i === index ? { ...b, text } : b))} /> : <>
         <Field multiline textAlignVertical="top" value={block.text} placeholder={t('Введіть або вставте текст цього блоку')}
           accessibilityLabel={t('Текст блоку {name}', { name: title(index) })}
           onChangeText={text => update(blocks.map((b, i) => i === index ? { ...b, text } : b))}
@@ -99,11 +102,12 @@ export function SongBuilder({ value, onChange, chords, german }: {
             update([...blocks.slice(0, index), ...parts, ...blocks.slice(index + 1)]);
           }} />
         </View>}
+        </>}
       </View>)}
-      <BuilderMenu primary title={t('Додати блок')} actions={typeActions} onAction={type => {
+      <BuilderMenu primary title={t('Додати блок')} actions={addActions} onAction={type => {
         Keyboard.dismiss();
-        const added = newBlock(labelFor(type));
-        update(blocks.length === 1 && !blocks[0].text.trim() ? [added] : [...blocks, added]);
+        const added = type === 'grid' || type === 'strum' ? newGridBlock(t(type === 'grid' ? 'Сітка акордів' : 'Схема бою'), type === 'strum') : newBlock(labelFor(type));
+        update(blocks.length === 1 && !blocks[0].text.trim() && !blocks[0].kind ? [added] : [...blocks, added]);
       }} />
       <T muted>{t('Вставили всю пісню в один блок? Поставте курсор у перший рядок нового куплету й натисніть «Розділити блок».')}</T>
       <T muted>{t('Акорди необов’язкові. Поставте курсор перед словом і виберіть «Вставити акорд», або введіть [Am] вручну.')}</T>

@@ -89,7 +89,7 @@ export default function EditScreen() {
   const diff = lineDiff(server, text);
   const changed = isNew ? text.trim() !== (TEMPLATE.head + TEMPLATE.body).trim() : hasChanges(diff);
   const noTitle = isNew && !getDirective(head, 'title');
-  const noText = isNew && !parsed.sections.some(s => s.lines.some(l => l.type === 'lyrics' && l.segments.some(x => x.chord || x.text.trim())));
+  const noText = isNew && !parsed.sections.some(s => s.lines.some(l => l.type === 'grid' ? l.grid.rows.some(r => r.valid && r.bars.some(b => b.cells.length)) : l.type === 'lyrics' && l.segments.some(x => x.chord || x.text.trim())));
   const baseVersion = ov?.chordpro != null ? ov.base_version : (song?.version ?? 0);
   const stale = !!song && baseVersion < song.version;
   const goTo = (next: Tab) => { Keyboard.dismiss(); setTab(next); scroll.current?.scrollTo({ y: 0, animated: false }); };

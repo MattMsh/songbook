@@ -185,7 +185,7 @@ export default function SongScreen() {
             accessibilityState={{ checked: toolsOpen }}
             accessibilityLabel={t('Інструменти музиканта')}
             style={[styles.toggle, { backgroundColor: colors.card }]}>
-            <T muted style={{ flex: 1 }} numberOfLines={1}>
+            <T muted style={{ flex: 1, minWidth: 150 }}>
               {[
                 ctx.soundingKey && t('Тональність {key}', { key: ctx.soundingKey }),
                 bpm && `${bpm} BPM`,
@@ -341,6 +341,6 @@ const styles = StyleSheet.create({
   label: { minWidth: 44, fontWeight: '600' },
   headerButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   strike: { position: 'absolute', width: 26, top: 21, height: 2, transform: [{ rotate: '-45deg' }] },
-  toggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
+  toggle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
   bar: { gap: 10, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
 });
