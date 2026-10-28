@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { metaInput, setMetaInput } from '../src/lib/song-meta';
-import { parseChordPro } from '@songbook/shared';
+import { parseChordPro, splitHeader } from '@songbook/shared';
 import { insertChord, newBlock, newGridBlock, readBlocks, splitBlock, writeBlocks } from '../src/lib/song-builder';
 
 describe('lossless song blocks', () => {
@@ -44,6 +45,24 @@ describe('lossless song blocks', () => {
 });
 
 describe('grid blocks', () => {
+  it('keeps the published example valid and editable without source changes', () => {
+    const source = readFileSync(new URL('../../../songs/005-razom-u-svitli.cho', import.meta.url), 'utf8');
+    const parsed = parseChordPro(source);
+    expect(parsed.meta).toMatchObject({ number: 905, key: 'C', tempo: 84, time: '4/4' });
+    const grids = parsed.sections.flatMap(section => section.lines.flatMap(line => line.type === 'grid' ? [line.grid] : []));
+    expect(grids).toHaveLength(5);
+    for (const grid of grids) {
+      expect(grid.issues).toEqual([]);
+      for (const row of grid.rows) {
+        expect(row.valid).toBe(true);
+        expect(row.bars.reduce((count, bar) => count + bar.cells.length, 0)).toBe(grid.shape.cells);
+      }
+    }
+    const { body } = splitHeader(source);
+    const blocks = readBlocks(body);
+    expect(blocks).not.toBeNull();
+    expect(writeBlocks(blocks!)).toBe(body);
+  });
   it.each([
     '{sog: 4 Intro}\r\n| C  . G/B . |\r\n{eog}\r\n\r\n',
     '{c: Куплет 1}\n[A]Words\n{start_of_grid shape="1x4" label="Вступ"}\n|S dn~up . dx x |\n{end_of_grid}\nUnlabelled words\n{c: Приспів}\nMore',

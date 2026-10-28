@@ -1,0 +1,47 @@
+{title: Разом у світлі — приклад сіток і бою}
+{number: 905}
+{key: C}
+{tempo: 84}
+{time: 4/4}
+{rhythm: ↓ ↑ ↓ ↑}
+{notation: english}
+{tags: приклад, навчання}
+
+{start_of_grid shape="2x4" label="Вступ: акорди й простий бій"}
+| C . . . | Am . . . |
+|S dn up dn up | dn up dn up |
+{end_of_grid}
+
+{c: Куплет 1}
+[C]Тихий ранок [G]кличе нас,
+[Am]Світло входить [F]у наш дім.
+[C]Боже, будь із [G]нами в час,
+[F]Коли ділим [G]хліб усім.
+
+{start_of_grid shape="2x4" label="Бій куплету: вниз і вгору в одній комірці (~)"}
+| C . G/B . | Am . F . |
+|S dn~up dn~up dn~up dn~up | dn~up dn~up dn~up dn~up |
+{end_of_grid}
+
+{c: Приспів}
+[F]Разом у [G]світлі, [C]разом у [Am]мирі,
+[F]Пісня єд[G]нає наші [C]серця.
+[F]Дай нам лю[G]бов і на[C]дію у [Am]вірі,
+[F]Вчи нас під[G]тримати кожне [C]життя.
+
+{start_of_grid shape="2x4" label="Бій приспіву: акцент (!) і глушіння (×)"}
+| F . G . | C . Am . |
+|S d+ up dx up | d+ up dx up |
+{end_of_grid}
+
+{start_of_grid shape="2x4" label="Програш: два акорди в комірці (~), потім повтор такту (%)"}
+| C~G . Am . | % . . . |
+{end_of_grid}
+
+{c: Кінцівка}
+[F]Світло лю[G]бові не[C]сем.
+
+{start_of_grid shape="2x4" label="Кінцівка: арпеджіо (≈) та стакато (крапка після стрілки)"}
+| F . G . | C . . . |
+|S da . us . | ds . . . |
+{end_of_grid}
