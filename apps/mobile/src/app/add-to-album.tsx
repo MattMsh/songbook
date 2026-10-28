@@ -2,9 +2,10 @@ import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { Pressable } from 'react-native';
+import { Alert, Pressable } from 'react-native';
 import { Button, Field, Icon, ListItem, Row, Screen, T } from '@/components/ui';
 import { createAlbum, toggleAlbumSong } from '@/lib/albums';
+import { errorMessage } from '@/lib/api';
 import { albumIdsWithSong, listAlbums, useRevision, type Album } from '@/lib/db';
 import { SONGS } from '@/lib/i18n';
 import { useT, useTheme } from '@/lib/settings';
@@ -19,23 +20,35 @@ export default function AddToAlbumScreen() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [member, setMember] = useState<number[]>([]);
   const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      setAlbums(await listAlbums(db));
-      setMember(await albumIdsWithSong(db, songId));
-    })();
-  }, [db, songId, revision]);
+    let active = true;
+    Promise.all([listAlbums(db), albumIdsWithSong(db, songId)]).then(([albums, member]) => {
+      if (active) { setAlbums(albums); setMember(member); }
+    }).catch((error) => { if (active) Alert.alert(t('Помилка'), errorMessage(error)); });
+    return () => { active = false; };
+  }, [db, songId, revision, t]);
 
-  const toggle = (albumId: number) => {
+  const toggle = async (albumId: number) => {
+    if (saving) return;
+    setSaving(true);
     Haptics.selectionAsync().catch(() => {});
-    toggleAlbumSong(db, albumId, songId);
+    try { await toggleAlbumSong(db, albumId, songId); }
+    catch (error) { Alert.alert(t('Помилка'), errorMessage(error)); }
+    finally { setSaving(false); }
   };
 
   const create = async () => {
-    if (!name.trim()) return;
-    await toggleAlbumSong(db, (await createAlbum(db, name))!, songId);
-    setName('');
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    try {
+      const albumId = await createAlbum(db, name);
+      if (albumId === null) return;
+      await toggleAlbumSong(db, albumId, songId);
+      setName('');
+    } catch (error) { Alert.alert(t('Помилка'), errorMessage(error)); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -57,7 +70,7 @@ export default function AddToAlbumScreen() {
           onSubmitEditing={create}
           style={{ flex: 1 }}
         />
-        <Button icon="add" label={t('Створити альбом')} disabled={!name.trim()} onPress={create} />
+        <Button icon="add" label={t('Створити альбом')} disabled={saving || !name.trim()} onPress={create} />
       </Row>
       <T muted style={{ fontSize: 13, paddingHorizontal: 16 }}>
         {member.length

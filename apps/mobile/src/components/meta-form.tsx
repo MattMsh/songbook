@@ -1,246 +1,149 @@
+import { Collapsible, Host, Picker } from '@expo/ui';
 import {
-  beatGrid,
-  getDirective,
-  isMinor,
-  keyChoices,
-  parseAccents,
-  parseChord,
-  setDirective,
-  tapTempo,
-  type Chord,
-  type Notation,
+  beatGrid, getDirective, isMinor, keyChoices, parseAccents, parseChord, setDirective, tapTempo,
+  type Chord, type Notation,
 } from '@songbook/shared';
-import { useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Platform, Pressable, View } from 'react-native';
+import { metaInput, setMetaInput } from '@/lib/song-meta';
 import { useT, useTheme } from '@/lib/settings';
-import { Button, Chip, Field, H, Row, T } from './ui';
-import { Wheel } from './wheel';
+import { Button, Field, H, Row, T } from './ui';
 
 const BEATS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 const UNITS = ['2', '4', '8', '16'];
-const STROKES = ['↓', '↑', '×'];
 const DEFAULT_TIME = '4/4';
 
-/** Key of the song: its directive, else the first chord, else C. Key and time are never empty. */
-function effectiveKey(head: string, chords: string[], notation: Notation): Chord {
+function effectiveKey(head: string, chords: string[]): Chord {
   const first = chords[0] ? parseChord(chords[0]) : null;
-  // Chords are shapes for the song capo, so the sounding key is that much higher.
   const capo = Number(getDirective(head, 'capo')) || 0;
   const fromChord = first && { ...first, root: (first.root + capo) % 12 };
   return parseChord(getDirective(head, 'key') ?? '') ?? fromChord ?? { root: 0, quality: '' };
 }
-
 const keyName = (root: number, minor: boolean, notation: Notation) =>
   keyChoices({ root, quality: minor ? 'm' : '' }, notation)[root].name;
 
-/** Writes the effective key and time into the header if they are missing. */
+/** Writes defaults only when the original source has no key or meter. */
 export function withRequiredMeta(head: string, chords: string[], notation: Notation): string {
   let h = head || '\n';
   if (!getDirective(h, 'key')) {
-    const key = effectiveKey(h, chords, notation);
+    const key = effectiveKey(h, chords);
     h = setDirective(h, 'key', keyName(key.root, isMinor(key), notation));
   }
   if (!getDirective(h, 'time')) h = setDirective(h, 'time', DEFAULT_TIME);
   return h;
 }
 
-/** Form over the song's header directives; edits `head` in place via setDirective. */
-export function MetaForm({
-  head,
-  onChange,
-  notation,
-  chords,
-}: {
-  head: string;
-  onChange: (head: string) => void;
-  notation: Notation;
-  chords: string[];
+export function MetaForm({ head, onChange, notation, chords }: {
+  head: string; onChange: (head: string) => void; notation: Notation; chords: string[];
 }) {
   const { colors } = useTheme();
   const t = useT();
+  const [music, setMusic] = useState(false);
+  const [details, setDetails] = useState(false);
   const taps = useRef<number[]>([]);
-  const get = (name: string) => getDirective(head, name) ?? '';
-  const apply = (h: string, name: string, value: string | number | null) => {
-    const v = typeof value === 'string' ? value.replace(/[{}]/g, '').trim() || null : value;
-    // A fresh header gets a blank line before the lyrics.
-    return v === null ? setDirective(h, name, null) : setDirective(h || '\n', name, v);
-  };
-  const set = (name: string, value: string | number | null) => onChange(apply(head, name, value));
-
-  const key = effectiveKey(head, chords, notation);
-  const minor = isMinor(key);
-  const time = /^\d+\/\d+$/.test(get('time')) ? get('time') : DEFAULT_TIME;
+  const get = (name: string) => metaInput(head, name);
+  const set = (name: string, value: string | number | null) => onChange(setMetaInput(head, name, value));
+  const key = effectiveKey(head, chords);
+  const currentKey = get('key').trim() || keyName(key.root, isMinor(key), notation);
+  const time = get('time').trim() || DEFAULT_TIME;
   const [beats, unit] = time.split('/');
-  // Accents belong to the meter, so a new time signature starts from the default ones.
-  const setTime = (t: string) => onChange(apply(apply(head, 'time', t), 'accents', null));
+  const setTime = (value: string) => onChange(setMetaInput(setMetaInput(head, 'time', value), 'accents', null));
   const tempo = Number(get('tempo')) || null;
   const capo = Number(get('capo')) || 0;
   const rhythm = get('rhythm');
-
   const accents = parseAccents(get('accents'));
   const grid = beatGrid(time, accents);
-  const toggleBeat = (beat: number) => {
-    const list = accents ?? grid.flatMap((a, i) => (a === 'weak' ? [] : [i + 1]));
-    const next = list.includes(beat) ? list.filter((b) => b !== beat) : [...list, beat].sort((a, b) => a - b);
-    set('accents', next.length ? next.join(' ') : null);
-  };
-
+  const touch = Platform.OS === 'android' ? 48 : 44;
+  const picker = (label: string, value: string, values: string[], change: (value: string) => void) => (
+    <View style={{ gap: 4 }}>
+      <H>{label}</H>
+      <Host ignoreSafeArea="all" matchContents={{ vertical: true }} accessibilityLabel={label} style={{ width: '100%', minHeight: touch }}>
+        <Picker appearance="menu" selectedValue={value} onValueChange={change}>
+          {[...new Set([value, ...values])].map(option => <Picker.Item key={option} value={option} label={option} />)}
+        </Picker>
+      </Host>
+    </View>
+  );
+  const stepTempo = (delta: number) => set('tempo', Math.min(300, Math.max(20, (tempo ?? 80) + delta)));
   const tap = () => {
     taps.current = [...taps.current, Date.now()].slice(-10);
     const bpm = tapTempo(taps.current);
     if (bpm) set('tempo', bpm);
   };
-  const stepTempo = (d: number) => set('tempo', Math.min(300, Math.max(20, (tempo ?? 80) + d)));
 
-  return (
-    <View style={{ gap: 10 }}>
-      <H>{t('Назва')}</H>
-      <Field value={get('title')} onChangeText={(v) => set('title', v)} placeholder={t('Назва пісні')} />
-
-      <Row gap={16}>
-        <View style={{ gap: 6 }}>
-          <H>{t('Номер')}</H>
-          <Field
-            value={get('number')}
-            onChangeText={(v) => set('number', v.replace(/\D/g, ''))}
-            placeholder={t('авто')}
-            keyboardType="number-pad"
-            style={{ width: 90 }}
-          />
-        </View>
-        <View style={{ gap: 6, flex: 1 }}>
-          <H>{t('Темп, BPM')}</H>
-          <Row gap={6}>
-            <Button small kind="secondary" title="−" onPress={() => stepTempo(-2)} />
-            <Field
-              value={get('tempo')}
-              onChangeText={(v) => set('tempo', v.replace(/\D/g, '').slice(0, 3))}
-              placeholder="—"
-              keyboardType="number-pad"
-              style={{ width: 64, textAlign: 'center' }}
-            />
-            <Button small kind="secondary" title="+" onPress={() => stepTempo(2)} />
-            <Button small kind="secondary" title="Tap" onPress={tap} />
-          </Row>
-        </View>
+  return <View style={{ gap: 12 }}>
+    <H>{t('Назва')}</H>
+    <Field accessibilityLabel={t('Назва пісні')} value={get('title')} onChangeText={v => set('title', v)} placeholder={t('Назва пісні')} />
+    <T muted>{t('Назва обов’язкова. Інші параметри можна уточнити пізніше.')}</T>
+    {picker(t('Тональність'), currentKey,
+      [false, true].flatMap(minor => keyChoices({ root: 0, quality: minor ? 'm' : '' }, notation).map(k => k.name)), value => set('key', value))}
+    {picker(t('Розмір'), time, ['4/4', '3/4', '6/8', '2/4', '12/8', '5/4', '7/8'], setTime)}
+    <Host ignoreSafeArea="all" matchContents={{ vertical: true }} style={{ width: '100%', minHeight: touch }}>
+      <Collapsible label={t('Для музикантів: темп, бій, капо')} isOpen={music} onOpenChange={setMusic} />
+    </Host>
+    {music && <View style={{ gap: 12 }}>
+      <H>{t('Темп, BPM')}</H>
+      <Field accessibilityLabel={t('Темп, BPM')} value={get('tempo')}
+        onChangeText={v => set('tempo', v.replace(/\D/g, '').slice(0, 3))} placeholder={t('Не задано')}
+        keyboardType="number-pad" />
+      <Row wrap>
+        <Button small kind="secondary" title="−" label={t('Зменшити темп')} onPress={() => stepTempo(-2)} />
+        <Button small kind="secondary" title="+" label={t('Збільшити темп')} onPress={() => stepTempo(2)} />
+        <Button small kind="secondary" title={t('Відбити темп')} onPress={tap} />
+        {!!tempo && <Button small kind="ghost" title={t('Очистити темп')} onPress={() => set('tempo', null)} />}
       </Row>
-
-      <H>{t('Тональність')}</H>
-      <Row gap={12} style={{ justifyContent: 'center' }}>
-        <Wheel
-          label={t('Нота тональності')}
-          items={keyChoices({ root: 0, quality: minor ? 'm' : '' }, notation).map((k) => k.name.replace(/m$/, ''))}
-          index={key.root}
-          onChange={(i) => set('key', keyName(i, minor, notation))}
-        />
-        <Wheel
-          label={t('Лад')}
-          width={110}
-          items={[t('мажор'), t('мінор')]}
-          index={minor ? 1 : 0}
-          onChange={(i) => set('key', keyName(key.root, i === 1, notation))}
-        />
-        <T style={{ width: 60, fontSize: 22, fontWeight: '700' }}>{keyName(key.root, minor, notation)}</T>
-      </Row>
-
-      <H>{t('Розмір')}</H>
-      <Row gap={12} style={{ justifyContent: 'center' }}>
-        <Wheel
-          label={t('Кількість долей')}
-          items={BEATS}
-          index={Math.max(0, BEATS.indexOf(beats))}
-          onChange={(i) => setTime(`${BEATS[i]}/${unit}`)}
-        />
-        <T style={{ fontSize: 22 }}>/</T>
-        <Wheel
-          label={t('Тривалість долі')}
-          items={UNITS}
-          index={Math.max(0, UNITS.indexOf(unit))}
-          onChange={(i) => setTime(`${beats}/${UNITS[i]}`)}
-        />
-        <T style={{ width: 60, fontSize: 22, fontWeight: '700' }}>{time}</T>
-      </Row>
-
+      <T muted>{t('Натисніть «Відбити темп» кілька разів у ритмі пісні.')}</T>
+      {picker(t('Кількість долей'), beats, BEATS, value => setTime(`${value}/${unit || '4'}`))}
+      {picker(t('Тривалість долі'), unit || '4', UNITS, value => setTime(`${beats}/${value}`))}
       <H>{t('Сильні долі')}</H>
-      <Row wrap gap={6}>
-        {grid.map((accent, i) => (
-          <Pressable
-            key={i}
-            accessibilityRole="button"
-            accessibilityLabel={t('Доля {n}', { n: i + 1 })}
-            accessibilityState={{ selected: accent !== 'weak' }}
-            onPress={() => toggleBeat(i + 1)}
-            style={[
-              styles.beat,
-              {
-                backgroundColor: accent === 'strong' ? colors.chord : accent === 'medium' ? colors.border : colors.card,
-                borderColor: colors.border,
-              },
-            ]}>
-            <Text style={{ color: accent === 'strong' ? colors.onChord : colors.text, fontWeight: '700' }}>{i + 1}</Text>
-          </Pressable>
-        ))}
+      <Row wrap>
+        {grid.map((accent, i) => <Pressable key={i} accessibilityRole="checkbox" accessibilityLabel={t('Доля {n}', { n: i + 1 })}
+          accessibilityState={{ checked: accent !== 'weak' }} onPress={() => {
+            const list = accents ?? grid.flatMap((a, i) => a === 'weak' ? [] : [i + 1]);
+            const next = list.includes(i + 1) ? list.filter(b => b !== i + 1) : [...list, i + 1].sort((a, b) => a - b);
+            set('accents', next.length ? next.join(' ') : null);
+          }} style={({ pressed }) => ({ minWidth: touch, minHeight: touch, padding: 10, borderRadius: 12,
+            alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1,
+            backgroundColor: accent === 'strong' ? colors.chord : accent === 'medium' ? colors.border : colors.card })}>
+          <T style={{ color: accent === 'strong' ? colors.onChord : colors.text, fontWeight: '600' }}>{i + 1}</T>
+        </Pressable>)}
         {accents && <Button small kind="ghost" title={t('Типово')} onPress={() => set('accents', null)} />}
       </Row>
-      <T muted style={{ fontSize: 13 }}>
-        {t(accents ? 'Ваші акценти для метронома.' : 'Типові акценти за розміром. Натисніть долю, щоб змінити.')}
-      </T>
-
+      <T muted>{t('Типові акценти за розміром. Натисніть долю, щоб змінити.')}</T>
       <H>{t('Бій')}</H>
-      <View style={[styles.rhythm, { backgroundColor: colors.card }]}>
-        <Text style={{ color: rhythm ? colors.text : colors.muted, fontSize: 24, letterSpacing: 3 }}>
-          {rhythm || t('не задано')}
-        </Text>
-      </View>
-      <Row wrap gap={6}>
-        {STROKES.map((s) => (
-          <Button key={s} small kind="secondary" title={s} onPress={() => set('rhythm', rhythm + s)} />
-        ))}
-        <Button small kind="secondary" title={t('пробіл')} onPress={() => rhythm && !rhythm.endsWith(' ') && set('rhythm', rhythm + ' ')} />
-        <Button small kind="secondary" icon="backspace" label={t('Стерти удар')} onPress={() => set('rhythm', rhythm.slice(0, -1))} />
-        {rhythm ? <Button small kind="ghost" title={t('Очистити')} onPress={() => set('rhythm', null)} /> : null}
+      <Field accessibilityLabel={t('Бій')} value={rhythm} onChangeText={v => set('rhythm', v)} placeholder={t('Не задано')} />
+      <Row wrap>
+        <Button small kind="secondary" title="↓" label={t('Удар вниз')} onPress={() => set('rhythm', rhythm + '↓')} />
+        <Button small kind="secondary" title="↑" label={t('Удар вгору')} onPress={() => set('rhythm', rhythm + '↑')} />
+        <Button small kind="secondary" title="×" label={t('Приглушити струни')} onPress={() => set('rhythm', rhythm + '×')} />
+        <Button small kind="secondary" title={t('пробіл')} disabled={!rhythm || rhythm.endsWith(' ')} onPress={() => set('rhythm', rhythm + ' ')} />
+        <Button small kind="secondary" icon="backspace" label={t('Стерти удар')} disabled={!rhythm} onPress={() => set('rhythm', rhythm.slice(0, -1))} />
+        {!!rhythm && <Button small kind="ghost" title={t('Очистити')} onPress={() => set('rhythm', null)} />}
       </Row>
-
-      <H>{t('Капо')}</H>
-      <Row gap={6}>
-        <Button small kind="secondary" title="−" onPress={() => set('capo', capo > 1 ? capo - 1 : null)} />
-        <T style={{ minWidth: 24, textAlign: 'center' }}>{capo}</T>
-        <Button small kind="secondary" title="+" onPress={() => set('capo', Math.min(11, capo + 1))} />
-      </Row>
-      {capo > 0 && (
-        <T muted style={{ fontSize: 13 }}>
-          {t('Акорди записані як аплікатури для капо {capo}. Тональність вище — та, що звучить.', { capo })}
-        </T>
-      )}
-
-      <H>{t('Посилання на текст')}</H>
-      <Field
-        value={get('link')}
-        onChangeText={(v) => set('link', v)}
-        placeholder="https://…"
-        keyboardType="url"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
+      {picker(t('Капо'), String(capo), Array.from({ length: 12 }, (_, i) => String(i)), value => set('capo', Number(value) || null))}
+      {capo > 0 && <T muted>{t('Акорди записані як аплікатури для капо {capo}. Тональність вище — та, що звучить.', { capo })}</T>}
       <H>{t('Нотація акордів')}</H>
-      <Row wrap gap={6}>
-        <Chip label={t('Авто')} active={!get('notation')} onPress={() => set('notation', null)} />
-        <Chip label="C D E … B" active={get('notation') === 'english'} onPress={() => set('notation', 'english')} />
-        <Chip label="C D E … H" active={get('notation') === 'german'} onPress={() => set('notation', 'german')} />
-      </Row>
-    </View>
-  );
+      <Host ignoreSafeArea="all" matchContents={{ vertical: true }} style={{ width: '100%', minHeight: touch }}>
+        <Picker appearance="menu" selectedValue={get('notation')} onValueChange={value => set('notation', value || null)}>
+          <Picker.Item value="" label={t('Авто')} />
+          <Picker.Item value="english" label="C D E … B" />
+          <Picker.Item value="german" label="C D E … H" />
+        </Picker>
+      </Host>
+    </View>}
+    <Host ignoreSafeArea="all" matchContents={{ vertical: true }} style={{ width: '100%', minHeight: touch }}>
+      <Collapsible label={t('Додатково: номер, теги, джерело')} isOpen={details} onOpenChange={setDetails} />
+    </Host>
+    {details && <View style={{ gap: 12 }}>
+      <H>{t('Номер')}</H>
+      <Field accessibilityLabel={t('Номер пісні')} value={get('number')} onChangeText={v => set('number', v.replace(/\D/g, ''))}
+        placeholder={t('авто')} keyboardType="number-pad" />
+      <T muted>{t('Залиште порожнім — номер буде призначено автоматично.')}</T>
+      <H>{t('Теги')}</H>
+      <Field accessibilityLabel={t('Теги через кому')} value={get('tags')} onChangeText={v => set('tags', v)} placeholder={t('Теги через кому')} autoCorrect={false} />
+      <H>{t('Посилання на текст')}</H>
+      <Field accessibilityLabel={t('Посилання на текст')} value={get('link')} onChangeText={v => set('link', v)} placeholder="https://…"
+        keyboardType="url" autoCapitalize="none" autoCorrect={false} />
+    </View>}
+  </View>;
 }
-
-const styles = StyleSheet.create({
-  beat: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rhythm: { borderRadius: 10, padding: 12, alignItems: 'center', minHeight: 56, justifyContent: 'center' },
-});

@@ -58,8 +58,25 @@ export interface ApiError {
   message?: string;
 }
 
+/** Settings for one song in one album, independent of personal overrides. */
+export interface SongSettings {
+  /** Semitone offset from the written key. */
+  transpose?: number;
+  /** Offset from the song's written capo, not an absolute fret. */
+  capo?: number;
+  bpm?: number;
+  notes?: string;
+}
+
+export interface AlbumPlan {
+  serviceDate?: string;
+  leader?: string;
+  notes?: string;
+  songSettings?: Record<string, SongSettings>;
+}
+
 /** An album shared by musicians; `songIds` is the set-list order. */
-export interface SharedAlbum {
+export interface SharedAlbum extends AlbumPlan {
   id: string;
   name: string;
   songIds: string[];

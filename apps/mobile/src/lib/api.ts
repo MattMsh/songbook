@@ -47,6 +47,9 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 /** Server error codes → Ukrainian text, translated by `t` when shown. */
 const MESSAGES: Record<string, string> = {
   network: 'Немає зʼєднання з сервером',
+  pending_shared_changes: 'Спочатку синхронізуйте зміни спільних альбомів.',
+  account_changed: 'Акаунт змінився. Повторіть дію в потрібному акаунті.',
+  recent_auth_required: 'Для видалення підтвердьте вхід у цей акаунт ще раз.',
   unauthorized: 'Потрібно увійти',
   forbidden: 'Недостатньо прав',
   not_found: 'Не знайдено',
@@ -58,9 +61,11 @@ const MESSAGES: Record<string, string> = {
   number_taken: 'Такий номер уже зайнятий',
   already_reviewed: 'Пропозицію вже розглянули',
   song_deleted: 'Пісню видалено',
+  snapshot_in_shared_album: 'Збережену копію можна додати лише до особистого альбому.',
   provider_not_configured: 'Цей спосіб входу не налаштований на сервері',
   invalid_token: 'Не вдалося перевірити вхід',
 };
 
 export const errorMessage = (e: unknown) =>
-  e instanceof ApiError ? (MESSAGES[e.code] ? t(MESSAGES[e.code]) : t('Помилка: {code}', { code: e.code })) : String(e);
+  e instanceof ApiError ? (MESSAGES[e.code] ? t(MESSAGES[e.code]) : t('Помилка: {code}', { code: e.code }))
+    : e instanceof Error && MESSAGES[e.message] ? t(MESSAGES[e.message]) : String(e);

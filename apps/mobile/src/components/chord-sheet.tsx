@@ -1,7 +1,10 @@
 import { chordBars, isChordOnlyLine, type Line, type ParsedSong, type Segment } from '@songbook/shared';
+import { Fragment, useState, type ReactNode } from 'react';
+import { noteSections } from '@/lib/song-notes';
 import { StyleSheet, Text, View } from 'react-native';
 import { usePartStyle } from '@/lib/parts';
-import { useTheme } from '@/lib/settings';
+import { useSettings, useT, useTheme } from '@/lib/settings';
+import { ChordDiagram } from './chord-diagram';
 
 interface Part {
   chord: string | null;
@@ -42,6 +45,8 @@ export function ChordSheet({
   mapChord,
   fontSize,
   showLyrics = true,
+  capo = song.meta.capo ?? 0,
+  renderSectionNote,
 }: {
   song: ParsedSong;
   showChords: boolean;
@@ -49,8 +54,24 @@ export function ChordSheet({
   fontSize: number;
   /** With chords on: false shows only the chords of each line. */
   showLyrics?: boolean;
+  /** Current capo, including the reader's local override. */
+  capo?: number;
+  /** Private reading-only content; export callers do not provide this callback. */
+  renderSectionNote?: (sectionKey: string) => ReactNode;
 }) {
   const { colors } = useTheme();
+  const t = useT();
+  const { settings } = useSettings();
+  const [selectedChord, setSelectedChord] = useState<string | null>(null);
+  const chordAction = (chord: string) => {
+    const displayed = mapChord(chord);
+    return {
+      onPress: () => setSelectedChord(displayed),
+      accessibilityRole: 'button' as const,
+      accessibilityLabel: t('Показати аплікатуру {chord}', { chord: displayed }),
+      suppressHighlighting: false,
+    };
+  };
   const parts = usePartStyle();
   const lyric = { color: colors.text, fontSize, lineHeight: fontSize * 1.35 };
   // Each song block gets its own chord colour; unlabelled parts keep the base one.
@@ -59,6 +80,9 @@ export function ChordSheet({
     return type ? parts.colorOf(type) : null;
   };
   const baseChord = { fontSize: fontSize * 0.85, fontWeight: '700' as const, lineHeight: fontSize * 1.15 };
+  const noteAnchors = new Map(renderSectionNote ? noteSections(song).map((section) => [
+    `${section.sectionIndex}:${section.endLine - 1}`, section.key,
+  ]) : []);
 
   const renderLine = (line: Line, key: number, lines: Line[], color: string) => {
     const chordStyle = { ...baseChord, color };
@@ -100,7 +124,7 @@ export function ChordSheet({
                 key={b}
                 style={[styles.bar, { borderColor: colors.muted }, b === grid.bars.length - 1 && styles.lastBar]}>
                 {bar.map((c, i) => (
-                  <Text key={i} numberOfLines={1} style={[chordStyle, { flex: 1 }]}>
+                  <Text key={i} {...chordAction(c)} numberOfLines={1} style={[chordStyle, { flex: 1 }]}>
                     {mapChord(c)}
                   </Text>
                 ))}
@@ -116,7 +140,7 @@ export function ChordSheet({
         <Text key={key} style={[lyric, { color: colors.muted }]}>
           {line.segments.map((s, i) => (
             <Text key={i}>
-              {s.chord && <Text style={chordStyle}>{mapChord(s.chord)}</Text>}
+              {s.chord && <Text {...chordAction(s.chord)} style={chordStyle}>{mapChord(s.chord)}</Text>}
               {s.text || ' '}
             </Text>
           ))}
@@ -127,10 +151,11 @@ export function ChordSheet({
       if (!hasChords) return null;
       return (
         <Text key={key} style={[chordStyle, { marginBottom: 4 }]}>
-          {line.segments
-            .filter((s) => s.chord)
-            .map((s) => mapChord(s.chord!))
-            .join('   ')}
+          {line.segments.filter((s) => s.chord).map((s, i) => (
+            <Text key={i}>
+              {i > 0 ? '   ' : ''}<Text {...chordAction(s.chord!)}>{mapChord(s.chord!)}</Text>
+            </Text>
+          ))}
         </Text>
       );
     }
@@ -140,7 +165,7 @@ export function ChordSheet({
           <View key={w} style={styles.word}>
             {word.map((p, i) => (
               <View key={i}>
-                {hasChords && <Text style={[chordStyle, styles.chord]}>{p.chord ? mapChord(p.chord) : ' '}</Text>}
+                {hasChords && <Text {...(p.chord ? chordAction(p.chord) : {})} style={[chordStyle, styles.chord]}>{p.chord ? mapChord(p.chord) : ' '}</Text>}
                 <Text style={lyric}>{p.text}</Text>
               </View>
             ))}
@@ -152,6 +177,7 @@ export function ChordSheet({
 
   return (
     <View style={{ gap: fontSize * 0.2 }}>
+      <ChordDiagram chord={selectedChord} capo={capo} notation={settings.notation === 'auto' ? song.meta.notation : settings.notation} onDismiss={() => setSelectedChord(null)} />
       {song.sections.map((section, s) => {
         const labelColor = partColor(section.label);
         const color = labelColor ?? colors.chord;
@@ -166,7 +192,13 @@ export function ChordSheet({
                 {labelText(section.label)}
               </Text>
             )}
-            {section.lines.map((line, i) => renderLine(line, i, section.lines, lineColors[i]))}
+            {section.lines.map((line, i) => {
+              const noteKey = noteAnchors.get(`${s}:${i}`);
+              return <Fragment key={i}>
+                {renderLine(line, i, section.lines, lineColors[i])}
+                {noteKey && renderSectionNote?.(noteKey)}
+              </Fragment>;
+            })}
           </View>
         );
       })}

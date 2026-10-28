@@ -1,6 +1,7 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import type { ReactNode } from 'react';
 import {
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -52,6 +53,8 @@ const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
+const MIN_TOUCH_SIZE = Platform.OS === 'android' ? 48 : 44;
+
 export function Icon({ name, size = 20, color }: { name: IconName; size?: number; color: ColorValue }) {
   // Semibold matches button labels; Android keeps the bundled regular weight.
   return <SymbolView name={ICONS[name]} size={size} tintColor={color} weight="semibold" />;
@@ -75,7 +78,7 @@ export function T({ muted, style, ...props }: TextProps & { muted?: boolean }) {
 }
 
 export function H({ children }: { children: ReactNode }) {
-  return <T style={styles.h}>{children}</T>;
+  return <T accessibilityRole="header" style={styles.h}>{children}</T>;
 }
 
 export function Screen({ children, padded = true }: { children: ReactNode; padded?: boolean }) {
@@ -99,6 +102,7 @@ export function Button({
   onPress,
   kind = 'primary',
   disabled,
+  busy = false,
   small,
 }: {
   title?: string;
@@ -108,6 +112,7 @@ export function Button({
   onPress: () => void;
   kind?: 'primary' | 'secondary' | 'danger' | 'ghost';
   disabled?: boolean;
+  busy?: boolean;
   small?: boolean;
 }) {
   const { colors } = useTheme();
@@ -116,17 +121,17 @@ export function Button({
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || busy}
       accessibilityRole="button"
-      accessibilityLabel={title ?? label}
-      accessibilityState={{ disabled }}
+      accessibilityLabel={label ?? title}
+      accessibilityState={{ disabled: !!(disabled || busy), busy }}
       style={({ pressed }) => [
         styles.button,
         small && styles.small,
-        { backgroundColor: bg, opacity: disabled ? 0.4 : pressed ? 0.7 : 1 },
+        { backgroundColor: bg, opacity: disabled || busy ? 0.4 : pressed ? 0.7 : 1 },
       ]}>
       {icon && <Icon name={icon} size={small ? 16 : 18} color={fg} />}
-      {title && <Text style={{ color: fg, fontSize: small ? 14 : 16, fontWeight: '600' }}>{title}</Text>}
+      {title && <Text style={{ color: fg, fontSize: small ? 14 : 16, fontWeight: '600', flexShrink: 1, textAlign: 'center' }}>{title}</Text>}
     </Pressable>
   );
 }
@@ -138,8 +143,8 @@ export function Chip({ label, active, onPress }: { label: string; active?: boole
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      style={[styles.chip, { backgroundColor: active ? colors.accent : colors.fill }]}>
-      <Text style={{ color: active ? colors.onAccent : colors.onFill, fontWeight: '600' }}>{label}</Text>
+      style={({ pressed }) => [styles.chip, { backgroundColor: active ? colors.accent : colors.fill, opacity: pressed ? 0.7 : 1 }]}>
+      <Text style={{ color: active ? colors.onAccent : colors.onFill, fontWeight: '600', flexShrink: 1, textAlign: 'center' }}>{label}</Text>
     </Pressable>
   );
 }
@@ -167,7 +172,7 @@ export function Card({ children }: { children: ReactNode }) {
 export function Banner({ text, kind = 'info' }: { text: string; kind?: 'info' | 'warn' }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.banner, { backgroundColor: kind === 'warn' ? colors.del : colors.card }]}>
+    <View accessible accessibilityRole={kind === 'warn' ? 'alert' : 'text'} accessibilityLiveRegion={kind === 'warn' ? 'assertive' : 'polite'} style={[styles.banner, { backgroundColor: kind === 'warn' ? colors.del : colors.card }]}>
       <T style={{ fontSize: 14 }}>{text}</T>
     </View>
   );
@@ -207,8 +212,12 @@ export function ListItem({
 const styles = StyleSheet.create({
   // Extra bottom room keeps the last controls clear of the floating tab bar.
   screen: { padding: 16, paddingBottom: 48, gap: 12 },
-  h: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', opacity: 0.6, marginTop: 8 },
+  h: { fontSize: 17, fontWeight: '600', marginTop: 8 },
   button: {
+    minHeight: MIN_TOUCH_SIZE,
+    minWidth: MIN_TOUCH_SIZE,
+    maxWidth: '100%',
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -219,7 +228,7 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   small: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16 },
+  chip: { minHeight: MIN_TOUCH_SIZE, minWidth: MIN_TOUCH_SIZE, maxWidth: '100%', flexShrink: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16 },
   field: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, borderCurve: 'continuous', padding: 12, fontSize: 16 },
   card: { borderRadius: 12, borderCurve: 'continuous', padding: 12, gap: 10 },
   banner: { borderRadius: 10, borderCurve: 'continuous', padding: 10 },

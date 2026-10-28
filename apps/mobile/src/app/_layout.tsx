@@ -10,15 +10,16 @@ import { DB_NAME, migrate } from '@/lib/db';
 import { SettingsProvider, useSettings, useT, useTheme } from '@/lib/settings';
 import { syncNow } from '@/lib/sync';
 
-/** Syncs on start, on return to the foreground, and when the role changes (shared albums depend on it). */
+/** Wait for credentials before syncing shared albums; resync when the account or role changes. */
 function SyncOnForeground() {
   const db = useSQLiteContext();
-  const role = useAuth().user?.role;
+  const { user, ready } = useAuth();
   useEffect(() => {
+    if (!ready) return;
     syncNow(db);
     const sub = AppState.addEventListener('change', (s) => s === 'active' && syncNow(db));
     return () => sub.remove();
-  }, [db, role]);
+  }, [db, ready, user?.id, user?.role]);
   return null;
 }
 

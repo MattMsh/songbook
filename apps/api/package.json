@@ -8,6 +8,7 @@
     "db:migrate": "wrangler d1 migrations apply songbook --local",
     "db:seed": "wrangler d1 execute songbook --local --file seed.sql",
     "typecheck": "wrangler types && tsc --noEmit",
+    "test": "vitest run",
     "smoke": "bash scripts/smoke.sh"
   },
   "dependencies": {

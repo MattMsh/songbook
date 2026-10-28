@@ -162,6 +162,37 @@ req GET /albums "$MUSICIAN"
 check "list shows update" "Неділя 10:00|fx-1,fx-2,fx-4" "$(field '.[0] | .name + "|" + (.songIds | join(","))')"
 req PUT /albums/missing "$MUSICIAN" '{"name":"X"}'
 check "update missing → 404" 404 "$STATUS"
+echo "== service plans and public snapshots"
+req PUT "/albums/$ALBUM_ID" "$MUSICIAN" '{"name":"План","songIds":["fx-1","fx-2"],"serviceDate":"2026-02-30"}'
+check "invalid calendar date → 400" 400 "$STATUS"
+req PUT "/albums/$ALBUM_ID" "$MUSICIAN" '{"name":"План","songIds":["fx-1"],"songSettings":{"fx-2":{"bpm":90}}}'
+check "settings outside plan → 400" 400 "$STATUS"
+req PUT "/albums/$ALBUM_ID" "$MUSICIAN" '{"name":"План","songIds":["fx-2","fx-1"],"serviceDate":"2026-11-01","leader":"Ведучий","notes":"Після молитви","songSettings":{"fx-2":{"transpose":2,"capo":1,"bpm":90,"notes":"Тихий вступ"}}}'
+check "save plan → 200" 200 "$STATUS"
+check "plan settings saved" "2026-11-01|90" "$(field '.serviceDate + "|" + (.songSettings["fx-2"].bpm | tostring)')"
+req PUT "/albums/$ALBUM_ID" "$MUSICIAN" '{"name":"План 2","songIds":["fx-1","fx-2"]}'
+check "legacy update preserves date" "2026-11-01" "$(field .serviceDate)"
+check "legacy update preserves settings" 2 "$(field '.songSettings["fx-2"].transpose')"
+req POST /shares "" '{"name":"План","songIds":["fx-1"]}'
+check "anonymous share creation → 401" 401 "$STATUS"
+req POST /shares "$MEMBER" '{"name":"План","songIds":["missing"]}'
+check "missing snapshot song → 400" 400 "$STATUS"
+req POST /shares "$MEMBER" '{"name":"План","songIds":["fx-2","fx-1"],"serviceDate":"2026-11-01","songSettings":{"fx-2":{"transpose":2,"bpm":90}},"personalNotes":"PRIVATE","chordpro":"PRIVATE"}'
+check "signed-in share creation → 201" 201 "$STATUS"
+SHARE_TOKEN=$(field .token)
+check "share token entropy" 64 "${#SHARE_TOKEN}"
+req GET "/shares/$SHARE_TOKEN"
+check "public snapshot without login → 200" 200 "$STATUS"
+check "snapshot song order" "fx-2,fx-1" "$(field '.songs | map(.id) | join(",")')"
+check "snapshot plan settings" 90 "$(field '.songSettings["fx-2"].bpm')"
+check "private fields excluded" false "$(field 'tostring | contains("PRIVATE")')"
+SNAPSHOT=$(field '.songs[0].chordpro')
+req PUT /songs/fx-2 "$ADMIN" "{\"chordpro\":$(cp_json $'{title: Зміна після поширення}\n{number: 2}\n[C]Інший текст'),\"baseVersion\":2}"
+check "canonical song update after share" 200 "$STATUS"
+req GET "/shares/$SHARE_TOKEN"
+check "snapshot remains immutable" "$SNAPSHOT" "$(field '.songs[0].chordpro')"
+req GET /shares/invalid
+check "invalid share token → 404" 404 "$STATUS"
 req DELETE "/albums/$ALBUM_ID" "$MEMBER"
 check "member delete → 403" 403 "$STATUS"
 req DELETE "/albums/$ALBUM_ID" "$MUSICIAN"

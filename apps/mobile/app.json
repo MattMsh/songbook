@@ -50,7 +50,8 @@
       "expo-secure-store",
       "expo-apple-authentication",
       "expo-localization",
-      "expo-audio"
+      "expo-audio",
+      "expo-sharing"
     ],
     "experiments": {
       "reactCompiler": true

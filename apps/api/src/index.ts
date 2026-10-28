@@ -1,11 +1,13 @@
 import { Hono } from 'hono';
 import type { Role } from '@songbook/shared';
 import { albums } from './albums';
+import { account } from './account';
 import { auth, loadUser, requireAdmin, requireUser } from './auth';
 import { fail, HttpError, readJson, toUser, type AppEnv, type UserRow } from './lib';
 import { parts } from './parts';
 import { proposals } from './proposals';
 import { songs, sync } from './songs';
+import { shares } from './shares';
 
 const ROLES: Role[] = ['admin', 'musician', 'member'];
 
@@ -31,9 +33,11 @@ const app = new Hono<AppEnv>()
   .get('/health', (c) => c.json({ ok: true }))
   .get('/me', (c) => c.json({ user: requireUser(c) }))
   .route('/auth', auth)
+  .route('/account', account)
   .route('/sync', sync)
   .route('/songs', songs)
   .route('/albums', albums)
+  .route('/shares', shares)
   .route('/parts', parts)
   .route('/proposals', proposals)
   .route('/users', users);

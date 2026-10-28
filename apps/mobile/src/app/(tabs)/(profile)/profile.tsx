@@ -1,95 +1,164 @@
-import SegmentedControl from '@expo/ui/community/segmented-control';
-import { useRouter } from 'expo-router';
+import { FieldGroup, Host, ListItem, RNHostView } from '@expo/ui';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Alert } from 'react-native';
-import { Button, Card, H, Row, Screen, T } from '@/components/ui';
-import { API_URL } from '@/lib/api';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Platform, Pressable, View } from 'react-native';
+import { Banner, Button, H, Icon, T } from '@/components/ui';
+import { ApiError, errorMessage } from '@/lib/api';
+import { pendingAccountDeletion } from '@/lib/account-deletion';
 import { useAuth } from '@/lib/auth';
-import { resetSync, searchEngine } from '@/lib/db';
-import { type Settings, useSettings, useT } from '@/lib/settings';
+import { getPendingSharedAlbumCount, useRevision } from '@/lib/db';
+import { type Settings, useSettings, useT, useTheme } from '@/lib/settings';
 import { syncNow, useSyncStatus } from '@/lib/sync';
 
 const ROLE = { admin: 'адміністратор', musician: 'музикант', member: 'учасник' };
 
-function Choice<K extends keyof Settings>({ name, options }: { name: K; options: [Settings[K], string][] }) {
+function Choice<K extends keyof Settings>({ name, label, options }: {
+  name: K;
+  label: string;
+  options: [Settings[K], string][];
+}) {
   const { settings, update } = useSettings();
+  const { colors } = useTheme();
   return (
-    <SegmentedControl
-      values={options.map(([, label]) => label)}
-      selectedIndex={options.findIndex(([value]) => value === settings[name])}
-      onChange={(e) => update({ [name]: options[e.nativeEvent.selectedSegmentIndex][0] })}
-    />
+    <RNHostView matchContents={{ vertical: true }}>
+      <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ gap: 4 }}>
+        <H>{label}</H>
+        {options.map(([value, title]) => (
+          <Pressable
+            key={String(value)}
+            accessibilityRole="radio"
+            accessibilityLabel={title}
+            accessibilityState={{ checked: settings[name] === value }}
+            onPress={() => update({ [name]: value })}
+            style={({ pressed }) => ({ minHeight: Platform.OS === 'android' ? 48 : 44, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.7 : 1 })}>
+            <Icon name={settings[name] === value ? 'checked' : 'unchecked'} color={colors.accent} />
+            <T style={{ flex: 1, flexShrink: 1 }}>{title}</T>
+          </Pressable>
+        ))}
+      </View>
+    </RNHostView>
   );
 }
 
 export default function ProfileScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, ready } = useAuth();
+  const { settings } = useSettings();
   const sync = useSyncStatus();
+  const revision = useRevision();
   const t = useT();
+  const [pending, setPending] = useState<number | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [error, setError] = useState('');
+  const [hasPendingDeletion, setHasPendingDeletion] = useState(false);
 
-  const resync = () =>
-    Alert.alert(t('Пересинхронізувати все?'), t('Пісні завантажаться заново. Альбоми та ваші правки залишаться.'), [
+  useFocusEffect(useCallback(() => {
+    let stale = false;
+    pendingAccountDeletion().then((marker) => !stale && setHasPendingDeletion(marker !== null)).catch(() => !stale && setError(t('Не вдалося перевірити незавершене видалення акаунта. Спробуйте відкрити профіль ще раз.')));
+    return () => { stale = true; };
+  }, [ready, user?.id, t]));
+
+  useEffect(() => {
+    let stale = false;
+    setPending(null);
+    getPendingSharedAlbumCount(db).then((count) => !stale && setPending(count)).catch((e) => !stale && setError(errorMessage(e)));
+    return () => { stale = true; };
+  }, [db, revision, user?.id]);
+
+  const confirmDiscard = () => Alert.alert(
+    t('Є ненадіслані зміни'),
+    t('Спочатку синхронізуйте зміни спільних альбомів. Якщо вийдете зараз, ці зміни буде відкинуто.'),
+    [
       { text: t('Скасувати'), style: 'cancel' },
-      { text: t('Так'), onPress: async () => (await resetSync(db), syncNow(db)) },
-    ]);
+      { text: t('Вийти й відкинути зміни'), style: 'destructive', onPress: () => { void leave(true); } },
+    ],
+  );
+  const leave = async (discardPending = false) => {
+    setLoggingOut(true);
+    setError('');
+    try {
+      if (!discardPending && await getPendingSharedAlbumCount(db) > 0) {
+        confirmDiscard();
+        return;
+      }
+      await logout({ discardPending, expectedUserId: user?.id });
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'pending_shared_changes') confirmDiscard();
+      else setError(errorMessage(e));
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
-    <Screen>
-      <H>{t('Режим')}</H>
-      <Choice name="mode" options={[['reader', t('Співаю / читаю')], ['musician', t('Музикант')]]} />
-      <T muted style={{ fontSize: 13 }}>{t('«Музикант» одразу показує акорди, тональність, метроном і бій.')}</T>
+    <Host style={{ flex: 1 }}>
+      <FieldGroup>
+        <FieldGroup.Section title={t('Акаунт')} disabled={!ready || loggingOut}>
+          <RNHostView matchContents={{ vertical: true }}>
+            <View style={{ gap: 8 }}>
+              {!ready && <T>{t('Завантаження…')}</T>}
+              {user ? (
+                <>
+                  <T selectable>{user.name ?? user.email}</T>
+                  {user.name && <T selectable muted>{user.email}</T>}
+                  <T muted>{t('Права акаунта: {role}', { role: t(ROLE[user.role]) })}</T>
+                </>
+              ) : <T>{t('Увійдіть, щоб ділитися піснями, працювати зі спільними альбомами та надсилати пропозиції.')}</T>}
+              {error ? <Banner kind="warn" text={error} /> : null}
+              {loggingOut && <T accessibilityLiveRegion="polite">{t('Вихід…')}</T>}
+            </View>
+          </RNHostView>
+          {user ? (
+            <>
+              <ListItem onPress={() => router.push('/proposals/mine')}>{t('Мої пропозиції')}</ListItem>
+              <ListItem onPress={() => router.push('/edit/new')}>{t('Запропонувати пісню')}</ListItem>
+              <RNHostView matchContents={{ vertical: true }}>
+                <Button kind="ghost" title={t(loggingOut ? 'Вихід…' : 'Вийти')} busy={loggingOut} onPress={() => { void leave(); }} />
+              </RNHostView>
+            </>
+          ) : <ListItem onPress={() => router.push('/login')}>{t('Увійти')}</ListItem>}
+          {(user || hasPendingDeletion) && <ListItem onPress={() => router.push('/delete-account')}>{t(hasPendingDeletion ? 'Завершити видалення акаунта' : 'Видалити акаунт')}</ListItem>}
+        </FieldGroup.Section>
 
-      <H>{t('Нотація акордів')}</H>
-      <Choice name="notation" options={[['auto', t('Як у пісні')], ['english', 'C D E … B'], ['german', 'C D E … H']]} />
+        <FieldGroup.Section title={t('Вигляд пісень')}>
+          <Choice name="mode" label={t('Режим перегляду')} options={[['reader', t('Співаю / читаю')], ['musician', t('Музикант')]]} />
+          <RNHostView matchContents={{ vertical: true }}>
+            <T muted>{t('Режим «Музикант» показує акорди й інструменти лише на цьому пристрої. Він не змінює права акаунта.')}</T>
+          </RNHostView>
+          <Choice name="notation" label={t('Нотація акордів')} options={[['auto', t('Як у пісні')], ['english', 'C D E … B'], ['german', 'C D E … H']]} />
+          <ListItem onPress={() => router.push('/part-colors')}>{t('Кольори блоків')}</ListItem>
+        </FieldGroup.Section>
 
-      <H>{t('Мова')}</H>
-      {/* Language names stay in their own language, so anyone can find theirs. */}
-      <Choice name="language" options={[['uk', 'Українська'], ['ru', 'Русский']]} />
+        <FieldGroup.Section title={t('Мова й тема')}>
+          <Choice name="language" label={t('Мова')} options={[['uk', 'Українська'], ['ru', 'Русский']]} />
+          <Choice name="theme" label={t('Тема')} options={[['system', t('Системна')], ['light', t('Світла')], ['dark', t('Темна')]]} />
+        </FieldGroup.Section>
 
-      <H>{t('Тема')}</H>
-      <Choice name="theme" options={[['system', t('Системна')], ['light', t('Світла')], ['dark', t('Темна')]]} />
-      <Button kind="secondary" icon="palette" title={t('Кольори блоків')} onPress={() => router.push('/part-colors')} />
+        <FieldGroup.Section title={t('Синхронізація')} disabled={sync.syncing}>
+          <RNHostView matchContents={{ vertical: true }}>
+            <View style={{ gap: 8 }} accessibilityLiveRegion="polite">
+              {sync.syncing && <T>{t('Синхронізація…')}</T>}
+              <T>{sync.lastSyncAt
+                ? t('Остання успішна синхронізація: {time}', { time: new Date(sync.lastSyncAt).toLocaleString(settings.language === 'uk' ? 'uk-UA' : 'ru-RU') })
+                : t('Ще не синхронізовано')}</T>
+              <T muted>{pending === null ? t('Перевірка змін…') : t('Ненадіслані зміни спільних альбомів: {count}', { count: pending })}</T>
+              {sync.error && <Banner kind="warn" text={t('Не вдалося синхронізувати: {error}', { error: sync.error })} />}
+            </View>
+          </RNHostView>
+          <ListItem onPress={() => { void syncNow(db); }}>{t('Оновити')}</ListItem>
+          <ListItem onPress={() => router.push('/diagnostics')}>{t('Діагностика')}</ListItem>
+        </FieldGroup.Section>
 
-      <H>{t('Акаунт')}</H>
-      {user ? (
-        <Card>
-          <T>{user.name ?? user.email}</T>
-          <T muted>{user.name ? `${user.email} · ${t(ROLE[user.role])}` : t(ROLE[user.role])}</T>
-          <Row wrap>
-            <Button small kind="secondary" title={t('Мої пропозиції')} onPress={() => router.push('/proposals/mine')} />
-            <Button small kind="secondary" title={t('Запропонувати пісню')} onPress={() => router.push('/edit/new')} />
-          </Row>
-          {user.role === 'admin' && (
-            <Row wrap>
-              <Button small kind="secondary" icon="queue" title={t('Черга пропозицій')} onPress={() => router.push('/admin/queue')} />
-              <Button small kind="secondary" icon="people" title={t('Користувачі')} onPress={() => router.push('/admin/users')} />
-              <Button small kind="secondary" icon="blocks" title={t('Блоки пісень')} onPress={() => router.push('/admin/parts')} />
-            </Row>
-          )}
-          <Button small kind="ghost" title={t('Вийти')} onPress={logout} />
-        </Card>
-      ) : (
-        <Button title={t('Увійти')} onPress={() => router.push('/login')} />
-      )}
-
-      <H>{t('Синхронізація')}</H>
-      <T muted style={{ fontSize: 13 }}>
-        {sync.syncing
-          ? t('Синхронізація…')
-          : sync.error
-            ? t('Офлайн: {error}', { error: sync.error })
-            : sync.lastSyncAt
-              ? t('Оновлено о {time}', { time: new Date(sync.lastSyncAt).toLocaleTimeString() })
-              : t('Ще не синхронізовано')}
-        {'\n'}
-        {t('Сервер: {url} · пошук: {engine}', { url: API_URL, engine: searchEngine() })}
-      </T>
-      <Row wrap>
-        <Button kind="secondary" icon="refresh" title={t('Оновити')} onPress={() => syncNow(db)} />
-        <Button kind="ghost" title={t('Пересинхронізувати все')} onPress={resync} />
-      </Row>
-    </Screen>
+        {user?.role === 'admin' && (
+          <FieldGroup.Section title={t('Адміністрування')}>
+            <ListItem onPress={() => router.push('/admin/queue')}>{t('Черга пропозицій')}</ListItem>
+            <ListItem onPress={() => router.push('/admin/users')}>{t('Користувачі')}</ListItem>
+            <ListItem onPress={() => router.push('/admin/parts')}>{t('Блоки пісень')}</ListItem>
+          </FieldGroup.Section>
+        )}
+      </FieldGroup>
+    </Host>
   );
 }

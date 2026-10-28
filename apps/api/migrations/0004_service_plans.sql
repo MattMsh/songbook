@@ -1,0 +1,1 @@
+ALTER TABLE shared_albums ADD COLUMN plan TEXT NOT NULL DEFAULT '{}';

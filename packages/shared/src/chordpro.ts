@@ -20,6 +20,7 @@ export interface Section {
 
 export interface SongMeta {
   title: string;
+  tags: string[];
   number: number | null;
   key: string | null;
   tempo: number | null;
@@ -95,9 +96,21 @@ export function parseAccents(v: string | null | undefined): number[] | null {
   return list.length ? list : null;
 }
 
+/** Comma-separated tags keep their spelling; duplicates ignore case. */
+export function parseTags(value: string): string[] {
+  const seen = new Set<string>();
+  return value.split(',').map((tag) => tag.replace(/[{}\r\n]/g, '').trim()).filter((tag) => {
+    const key = tag.toLocaleLowerCase('uk');
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function parseChordPro(src: string): ParsedSong {
   const meta: SongMeta = {
     title: '',
+    tags: [],
     number: null,
     key: null,
     tempo: null,
@@ -125,6 +138,7 @@ export function parseChordPro(src: string): ParsedSong {
       const v = d.value.trim();
       switch (d.name) {
         case 'title': meta.title = v; break;
+        case 'tags': meta.tags = parseTags([...meta.tags, v].join(',')); break;
         case 'number': meta.number = toInt(v.replace(/^№\s*/, '')); break;
         case 'key': meta.key = v || null; break;
         case 'tempo': meta.tempo = toInt(v); break;
@@ -253,7 +267,7 @@ export function partKind(label: string): PartKind | null {
 }
 
 /** Directives the editor form owns; they live in the block at the top of the song. */
-export const FORM_DIRECTIVES = ['title', 'number', 'key', 'tempo', 'time', 'capo', 'rhythm', 'accents', 'notation', 'link'];
+export const FORM_DIRECTIVES = ['title', 'number', 'key', 'tempo', 'time', 'capo', 'rhythm', 'accents', 'notation', 'link', 'tags'];
 
 /**
  * Splits the leading block of form directives (and blank lines) from the rest.

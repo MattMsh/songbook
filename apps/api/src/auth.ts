@@ -112,6 +112,15 @@ async function oauthUser(c: Ctx, provider: 'apple' | 'google', p: JWTPayload, na
 }
 
 export const auth = new Hono<AppEnv>()
+  .get('/methods', (c) => {
+    c.header('Cache-Control', 'no-store');
+    const configured = (audience: string) => audience.split(',').some((value) => value.trim());
+    return c.json({
+      email: c.env.DEV_MODE === 'true' || Boolean(c.env.RESEND_API_KEY?.trim()),
+      apple: configured(c.env.APPLE_AUDIENCE ?? ''),
+      google: configured(c.env.GOOGLE_AUDIENCE ?? ''),
+    });
+  })
   .post('/magic/start', async (c) => {
     const { email: raw } = await readJson<{ email: string }>(c);
     const email = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
