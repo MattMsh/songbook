@@ -238,7 +238,7 @@ cd apps/mobile && npx expo export --platform android
 
 ## Що лишилось на потім
 
-- Дочекатися завершення EAS Submit для iOS 1.0.0 (6), потім перевірити обробку Apple й доступність у TestFlight. Збірка готова; подання перебуває в черзі. Production API та міграції оновлено раніше. Див. [перевірки випусків](docs/release-checks.md).
+- Перевірити обробку Apple й доступність у TestFlight для iOS 1.0.0 (6). Збірка та EAS Submit завершені. Код і результати перевірок опубліковано в GitHub. Production API та міграції оновлено раніше. Див. [перевірки випусків](docs/release-checks.md).
 - Перевірити нові можливості на пристроях і виконати release smoke-тест.
 - Rate limiting для початку та перевірки magic link, окрім наявного ліміту спроб коду.
 - Google sign-in на клієнті.

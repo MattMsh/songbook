@@ -7,8 +7,9 @@
 ### EAS і GitHub
 
 - iOS production build: `FINISHED`, 28 жовтня 2026 року о 14:50:20 UTC.
-- EAS Submit: `IN_QUEUE` станом на 28 жовтня 2026 року, 15:20:48 UTC.
-- Подання запущене один раз. Передачу до Apple та доступність у TestFlight ще не підтверджено.
+- EAS Submit: `FINISHED`, 28 жовтня 2026 року о 15:21:27 UTC; workflow: `SUCCESS`.
+- Подання запущене один раз. Після очікування в черзі збірку передано до Apple для TestFlight.
+- Обробку Apple й доступність для тестувальників ще не перевірено.
 - [Збірка](https://expo.dev/accounts/mattmsh/projects/songbook/builds/2bd9693b-1046-49c2-9762-a8b2d04b4772).
 - [Подання](https://expo.dev/accounts/mattmsh/projects/songbook/submissions/f51380f3-4304-47c4-a90a-3132cc7dee70).
 - Код відправлено в `MattMsh/songbook`, гілка `main`, коміт `2d1d97e20588f2996fa8ec936d917b751a027a59`.
