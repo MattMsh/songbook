@@ -186,7 +186,13 @@ export function parseChordPro(src: string): ParsedSong {
           // Standard ChordPro recall: repeat the last chorus here.
           const last = [current, ...sections.slice().reverse()].find((x) => x.kind === 'chorus');
           startSection('chorus', v || last?.label || 'Приспів');
-          if (last) current.lines = [...last.lines];
+          // Notes such as «тихо» belong to one performance: drop the original's, and lead with comments that follow the recall.
+          const notes: Line[] = [];
+          for (let n = parseDirective(sourceLines[index + 1] ?? ''); n?.name === 'comment' && !partKind(n.value); n = parseDirective(sourceLines[index + 1] ?? '')) {
+            notes.push({ type: 'comment', text: n.value.trim() });
+            index++;
+          }
+          current.lines = [...notes, ...(last?.lines ?? []).filter((l) => l.type !== 'comment' || partKind(l.text))];
           startSection(null, null);
           break;
         }

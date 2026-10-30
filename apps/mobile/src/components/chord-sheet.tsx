@@ -102,8 +102,9 @@ export function ChordSheet({
             {labelText(line.text)}
           </Text>
         );
+      // Performance notes («тихо», «соло») look like private notes, tinted with their part's colour.
       return (
-        <Text key={key} style={[styles.comment, { color: colors.muted, fontSize: fontSize * 0.8 }]}>
+        <Text key={key} style={[styles.comment, { color: colors.text, backgroundColor: colors.card, borderColor: color, fontSize: fontSize * 0.8 }]}>
           {line.text}
         </Text>
       );
@@ -152,6 +153,12 @@ export function ChordSheet({
     const hasChords = line.segments.some((s) => s.chord);
     if (!showLyrics) {
       if (!hasChords) return null;
+      // A compact plan: lines with the same chords in a row become one line with «×N».
+      const chordsOf = (l: Line | undefined) => l?.type === 'lyrics' && !isChordOnlyLine(l.segments) ? l.segments.flatMap((s) => s.chord ? [s.chord] : []).join(' ') : null;
+      const own = chordsOf(line);
+      if (chordsOf(lines[key - 1]) === own) return null;
+      let repeat = 1;
+      while (chordsOf(lines[key + repeat]) === own) repeat++;
       return (
         <Text key={key} style={[chordStyle, { marginBottom: 4 }]}>
           {line.segments.filter((s) => s.chord).map((s, i) => (
@@ -159,6 +166,7 @@ export function ChordSheet({
               {i > 0 ? '   ' : ''}<Text {...chordAction(s.chord!)}>{mapChord(s.chord!)}</Text>
             </Text>
           ))}
+          {repeat > 1 && <Text style={{ color: colors.muted }}>{`   ×${repeat}`}</Text>}
         </Text>
       );
     }
@@ -213,7 +221,7 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 },
   word: { flexDirection: 'row' },
   chord: { paddingRight: 4 },
-  comment: { fontStyle: 'italic', fontWeight: '600', marginTop: 8 },
+  comment: { fontStyle: 'italic', fontWeight: '600', marginVertical: 6, padding: 8, borderLeftWidth: 2 },
   label: { fontWeight: '700', marginTop: 8 },
   chorus: { borderLeftWidth: 3, paddingLeft: 10, marginVertical: 6 },
   gridRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },

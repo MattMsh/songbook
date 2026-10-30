@@ -244,6 +244,15 @@ describe('chordpro', () => {
     expect(parseChordPro('{chorus}').sections[0].label).toBe('Приспів');
   });
 
+  it('gives each chorus recall its own performance notes', () => {
+    const song = parseChordPro('{soc: Приспів}\n{c: Тихо}\n[C]Слава\n{eoc}\n{chorus: Приспів x2}\n{c: Голосно}\n{c: Програш}');
+    expect(song.sections.map((x) => x.lines)).toEqual([
+      [{ type: 'comment', text: 'Тихо' }, { type: 'lyrics', segments: [{ chord: 'C', text: 'Слава' }] }],
+      [{ type: 'comment', text: 'Голосно' }, { type: 'lyrics', segments: [{ chord: 'C', text: 'Слава' }] }],
+      [{ type: 'comment', text: 'Програш' }],
+    ]);
+  });
+
   it('splits chord-only lines into bars', () => {
     expect(chordBars(parseLyricLine('[G] | [G] | [G] | [G] – x4'))).toEqual({ bars: [['G'], ['G'], ['G'], ['G']], rest: 'x4' });
     expect(chordBars(parseLyricLine('| [Am] - [F] | [C] - [G] |'))).toEqual({ bars: [['Am', 'F'], ['C', 'G']], rest: '' });
