@@ -1,6 +1,24 @@
 {
   "version": 1,
   "skills": {
+    "agent-device": {
+      "source": "callstack/agent-device",
+      "sourceType": "github",
+      "skillPath": "skills/agent-device/SKILL.md",
+      "computedHash": "fb43bca78f0022a4c5348b6740a1edcc7599d8e01c23d76bdeaecdaf752f8216"
+    },
+    "android-emulator": {
+      "source": "callstack/agent-device",
+      "sourceType": "github",
+      "skillPath": "skills/android-emulator/SKILL.md",
+      "computedHash": "be7fd6812aff380e4e88075eda25a0316ac5a454289b3e3d2b3be5a87bdd319d"
+    },
+    "dogfood": {
+      "source": "callstack/agent-device",
+      "sourceType": "github",
+      "skillPath": "skills/dogfood/SKILL.md",
+      "computedHash": "65a0dd6013370a4f5201beef187b1b3a9246422fd1e87e67cbcf785f423c9d00"
+    },
     "expo-design-system": {
       "source": "expo/skills",
       "sourceType": "github",
@@ -18,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-ui/SKILL.md",
       "computedHash": "aacbebd4e76f98abfff29a73a5ef806bf6c34b4e4a5155fbbc6f3bc3866e8cbb"
+    },
+    "ios-simulator": {
+      "source": "callstack/agent-device",
+      "sourceType": "github",
+      "skillPath": "skills/ios-simulator/SKILL.md",
+      "computedHash": "a3245425cb6684da232df93bfac5b666e53b588914356c9952e9285651fb4851"
     }
   }
 }
