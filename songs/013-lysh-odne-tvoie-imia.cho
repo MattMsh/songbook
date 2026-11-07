@@ -1,0 +1,41 @@
+{title: Лиш одне Твоє ім'я}
+{number: 13}
+{key: Db}
+{capo: 1}
+{tempo: 128}
+{notation: english}
+
+{start_of_grid shape="2" label="Інтро"}
+| C~G/B | F |  x2
+{end_of_grid}
+
+{start_of_grid shape="2" label="Куплет (піаніно і гітара)"}
+| C~G/B | F |  x2
+| Am~G | F |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Приспів"}
+| Dm7 | F | C | Gsus |  x2
+{end_of_grid}
+
+{c: Куплет}
+{c: Приспів x2}
+
+{start_of_grid shape="4" label="Програш (піаніно і бас)"}
+| Dm7 | F | Am | G |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Бридж"}
+| Dm7 | F | Am | G |  x4
+{end_of_grid}
+
+{c: Приспів x2 x2}
+{c: Заспів}
+{c: Приспів x2}
+
+{start_of_grid shape="4" label="Заспів (C)"}
+| Dm7 | F | C | G |  x2
+{end_of_grid}
+
+{c: Заспів}
+{c: Приспів x3}

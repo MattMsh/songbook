@@ -1,0 +1,31 @@
+{title: Ось я, щоб схилитись}
+{number: 11}
+{key: D}
+{capo: 2}
+{tempo: 68}
+{notation: english}
+
+{start_of_grid shape="5" label="Куплет (піаніно)"}
+| C~G | Dm | C~G | F |  x2
+| F |
+{end_of_grid}
+
+{start_of_grid shape="4" label="Приспів"}
+| C | G | Am | F |  x2
+{end_of_grid}
+
+{c: Куплет 2}
+{c: Приспів x2}
+
+{start_of_grid shape="3" label="Бридж: 1 норм, 2 розганяємось, 3 голосно, 4 затихаємо (2 частина)"}
+| G~Am | F |  x2
+| F | F | F |
+{end_of_grid}
+
+{start_of_grid shape="4" label="Бридж x8 (починаємо з тишини)"}
+| C | G | Am | Am |
+{end_of_grid}
+
+{c: | F | — перехід на приспів}
+{c: Приспів x2}
+{c: Приспів — програш}

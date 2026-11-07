@@ -1,0 +1,35 @@
+{title: Дякуйте Господу, добрий бо Він}
+{number: 12}
+{key: E}
+{capo: 4}
+{tempo: 120}
+{notation: english}
+{link: https://holychords.pro/14075#E}
+
+{start_of_grid shape="8" label="Вступ (басові переходи)"}
+| C | C | Am | Am | G | G | F | F |
+| C |  x4
+{end_of_grid}
+
+{start_of_grid shape="4" label="Куплет"}
+| C | C | C | C |
+| F | F | C | C |
+| G | G | F | F |
+| C | C | C | C |
+| F | F | C | C |
+| G | G | F | F |  x2
+{end_of_grid}
+
+{start_of_grid shape="8" label="Приспів"}
+| C | C | Am | Am | G | G | F | F |
+{end_of_grid}
+
+{start_of_grid shape="8" label="Програш"}
+| C | C | Am | Am | G | G | F | F |
+| C |  x2
+{end_of_grid}
+
+{c: Куплет}
+{c: Приспів}
+{c: Програш}
+{c: Приспів x2}

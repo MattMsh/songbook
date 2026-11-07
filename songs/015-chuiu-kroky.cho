@@ -1,0 +1,48 @@
+{title: Чую кроки (Я дитя Царя)}
+{number: 15}
+{key: Am}
+{tempo: 84}
+{notation: english}
+{link: https://youtu.be/YAGUGfr2Y6w}
+
+{start_of_grid shape="4" label="Вступ"}
+| Am | F | C | G |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Куплет"}
+| Am | F | C | G |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Приспів"}
+| Am | F | C | G~E |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Куплет"}
+| Am | F | C | G~E |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Приспів"}
+| Am | F | C | G~E |
+| Am | F | C | G |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Програш"}
+| Am | F | C | G~E |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Бридж x4"}
+| Am | F | C | G~E |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Приспів x2 (на 2-й раз затихаємо перед бриджем)"}
+| Am | F | C | G~E |
+| Am | F | C | G~E |  x2
+{end_of_grid}
+
+{start_of_grid shape="4" label="Бридж 2 x8"}
+| Am | F | C | G~E |
+{end_of_grid}
+
+{start_of_grid shape="4" label="Приспів x3"}
+| Am | F | C | G~E |  x2
+{end_of_grid}

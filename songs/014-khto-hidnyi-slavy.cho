@@ -1,0 +1,37 @@
+{title: Хто гідний слави}
+{number: 14}
+{key: G}
+{tempo: 136}
+{notation: english}
+
+{start_of_grid shape="4" label="Куплет x2 (тихо)"}
+| G | D | Em~D | C |
+{end_of_grid}
+
+{start_of_grid shape="4" label="Приспів x2 (тихо)"}
+| G | Am | Em | C |
+{end_of_grid}
+
+{c: Куплет 2 x2}
+{c: Приспів x4}
+
+{start_of_grid shape="4" label="Програш x2 (тихо, спокійно)"}
+| C | D | Em | G~D |
+{end_of_grid}
+
+{start_of_grid shape="4" label="Бридж: 2 наростаємо, 2 сильно"}
+| C | D | Em | G~D |  x3
+| C | D | Em | D |
+{end_of_grid}
+
+{c: Приспів x2}
+
+{start_of_grid shape="4" label="Після приспіву"}
+| Em | C | Em | C |
+{end_of_grid}
+
+{c: Програш}
+{c: Бридж}
+{c: Приспів x2}
+{c: Після приспіву}
+{c: Приспів (тихо)}
