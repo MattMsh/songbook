@@ -51,7 +51,7 @@ describe('PDF HTML', () => {
     expect(html).toContain('<span class="barline">|</span>');
     expect(html).toContain('<span class="bar">Am - C</span>');
     expect(buildPdfHtml({ ...document, songs: [{ chordpro: '|[Am][G]Ісус |' }] }))
-      .toContain('<b class="chord">Am G</b><span>Ісус');
+      .toContain('<b class="chord">Am</b><span>&nbsp;</span></span><span class="segment"><b class="chord">G</b>');
     const lyrics = buildPdfHtml({ ...document, variant: 'lyrics', songs });
     expect(lyrics).toContain('<div class="line">Хочу все життя</div>');
   });

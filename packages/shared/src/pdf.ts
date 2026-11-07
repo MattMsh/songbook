@@ -1,4 +1,4 @@
-import { BAR_MARK_RE, chordBars, isChordOnlyLine, lineText, parseChordPro, stackChords } from './chordpro';
+import { BAR_MARK_RE, chordBars, isChordOnlyLine, lineText, parseChordPro } from './chordpro';
 import { chordContext, type Notation } from './chords';
 import { gridCellText, type ChordGrid } from './grids';
 import { effectiveCapo } from './plans';
@@ -74,8 +74,8 @@ export function buildPdfHtml(document: PdfDocument): string {
         const grid = isChordOnlyLine(line.segments) ? chordBars(line.segments) : null;
         if (grid) return `<div class="grid">${grid.bars.map((bar) =>
           `<span class="bar">${bar.map((chord) => e(ctx.map(chord))).join(' - ')}</span>`).join('')}${e(grid.rest)}</div>`;
-        return `<div class="line">${stackChords(line.segments).map((segment) => `<span class="segment">${segment.chords.length ?
-          `<b class="chord">${segment.chords.map((chord) => e(ctx.map(chord))).join(' ')}</b>` : ''}<span>${segment.text.split(BAR_MARK_RE).map((part, i) =>
+        return `<div class="line">${line.segments.map((segment) => `<span class="segment">${segment.chord === null ? '' :
+          `<b class="chord">${e(ctx.map(segment.chord))}</b>`}<span>${segment.text.split(BAR_MARK_RE).map((part, i) =>
           i % 2 ? `<span class="barline">${e(part)}</span>` : e(part)).join('') || '&nbsp;'}</span></span>`).join('')}</div>`;
       }).join('');
       return `<section>${label ? `<h3>${e(label)}</h3>` : ''}${lines}</section>`;

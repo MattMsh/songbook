@@ -14,7 +14,6 @@ import {
   partKind,
   chordBars,
   lineText,
-  stackChords,
   splitHeader,
   getDirective,
   ftsMatch,
@@ -270,12 +269,6 @@ describe('chordpro', () => {
     // A bar without a new chord repeats the chord that still sounds; words before a chord do not.
     expect(chordBars(parseLyricLine('| Хочу все | [F]життя | співати | x2'), 'C')).toEqual({ bars: [['C'], ['F'], ['F']], rest: 'x2' });
     expect(chordBars(parseLyricLine('[C]Хочу [F]все'))).toBeNull();
-  });
-
-  it('stacks chords on one spot over the next words', () => {
-    expect(stackChords(parseLyricLine('|[Am][G]Ісус жив[F]е [C]'))).toEqual([
-      { chords: [], text: '|' }, { chords: ['Am', 'G'], text: 'Ісус жив' }, { chords: ['F'], text: 'е ' }, { chords: ['C'], text: '' },
-    ]);
   });
 
   it('drops bar lines from lyrics', () => {
