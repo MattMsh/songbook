@@ -74,7 +74,10 @@ export function buildPdfHtml(document: PdfDocument): string {
         const grid = isChordOnlyLine(line.segments) ? chordBars(line.segments) : null;
         if (grid) return `<div class="grid">${grid.bars.map((bar) =>
           `<span class="bar">${bar.map((chord) => e(ctx.map(chord))).join(' - ')}</span>`).join('')}${e(grid.rest)}</div>`;
-        return `<div class="line">${line.segments.map((segment) => `<span class="segment">${segment.chord === null ? '' :
+        // In `[Am] Іс[G]ус` the chord sits over the space only, so a wide chord does not split «Ісус».
+        const segments = line.segments.flatMap((s) => s.chord !== null && /^\s+\S/.test(s.text)
+          ? [{ chord: s.chord, text: /^\s+/.exec(s.text)![0] }, { chord: null, text: s.text.trimStart() }] : [s]);
+        return `<div class="line">${segments.map((segment) => `<span class="segment">${segment.chord === null ? '' :
           `<b class="chord">${e(ctx.map(segment.chord))}</b>`}<span>${segment.text.split(BAR_MARK_RE).map((part, i) =>
           i % 2 ? `<span class="barline">${e(part)}</span>` : e(part)).join('') || '&nbsp;'}</span></span>`).join('')}</div>`;
       }).join('');
