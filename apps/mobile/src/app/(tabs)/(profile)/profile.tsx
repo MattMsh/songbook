@@ -129,6 +129,7 @@ export default function ProfileScreen() {
           </RNHostView>
           <Choice name="notation" label={t('Нотація акордів')} options={[['auto', t('Як у пісні')], ['english', 'C D E … B'], ['german', 'C D E … H']]} />
           <ListItem onPress={() => router.push('/part-colors')}>{t('Кольори блоків')}</ListItem>
+          <ListItem onPress={() => router.push('/song-format')}>{t('Як писати пісні')}</ListItem>
         </FieldGroup.Section>
 
         <FieldGroup.Section title={t('Мова й тема')}>

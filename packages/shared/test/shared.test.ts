@@ -13,6 +13,7 @@ import {
   parseSearch,
   partKind,
   chordBars,
+  lineText,
   splitHeader,
   getDirective,
   ftsMatch,
@@ -259,6 +260,20 @@ describe('chordpro', () => {
     expect(chordBars(parseLyricLine('[Am] | [F] | [C] | [G] x2'))).toEqual({ bars: [['Am'], ['F'], ['C'], ['G']], rest: 'x2' });
     expect(chordBars(parseLyricLine('|: [Em] - [D] | [C] :|'))).toEqual({ bars: [['Em', 'D'], ['C']], rest: '' });
     expect(chordBars(parseLyricLine('[Am] [F]'))).toBeNull();
+  });
+
+  it('reads bars from lyric lines', () => {
+    const line = parseLyricLine("| [C]Хочу [G/B]все | [F]життя співати Ім'я |");
+    expect(isChordOnlyLine(line)).toBe(false);
+    expect(chordBars(line)).toEqual({ bars: [['C', 'G/B'], ['F']], rest: '' });
+    // A bar without a new chord repeats the chord that still sounds; words before a chord do not.
+    expect(chordBars(parseLyricLine('| Хочу все | [F]життя | співати | x2'), 'C')).toEqual({ bars: [['C'], ['F'], ['F']], rest: 'x2' });
+    expect(chordBars(parseLyricLine('[C]Хочу [F]все'))).toBeNull();
+  });
+
+  it('drops bar lines from lyrics', () => {
+    expect(lineText(parseLyricLine("|: [C]Хочу [G/B]все | жи|[F]ття || співати :|"))).toBe('Хочу все життя співати');
+    expect(lyricsText(parseChordPro('| [C]Хочу | [F]життя |\n| [C] | [F] |'))).toBe('Хочу життя');
   });
 
   it('extracts lyrics and server fields', () => {

@@ -1,4 +1,4 @@
-import { chordBars, isChordOnlyLine, type Line, type ParsedSong, type Segment } from '@songbook/shared';
+import { BAR_MARK_RE, chordBars, isChordOnlyLine, lineText, type Line, type ParsedSong, type Segment } from '@songbook/shared';
 import { Fragment, useState, type ReactNode } from 'react';
 import { noteSections } from '@/lib/song-notes';
 import { StyleSheet, Text, View } from 'react-native';
@@ -33,6 +33,16 @@ export function toWords(segments: Segment[]): Part[][] {
   if (cur.length) words.push(cur);
   return words;
 }
+
+/** The chord that still sounds at the start of line `i`: the last chord of an earlier line in the section. */
+const carriedChord = (lines: Line[], i: number) => {
+  for (let j = i - 1; j >= 0; j--) {
+    const l = lines[j];
+    const chords = l.type === 'lyrics' ? l.segments.flatMap((s) => s.chord ? [s.chord] : []) : [];
+    if (chords.length) return chords.at(-1)!;
+  }
+  return null;
+};
 
 /** «Приспів x2» → «ПРИСПІВ x2»: capitals for the name, the repeat mark stays readable. */
 const labelText = (label: string) => {
@@ -113,32 +123,35 @@ export function ChordSheet({
       if (isChordOnlyLine(line.segments)) return null;
       return (
         <Text key={key} style={lyric}>
-          {line.segments.map((s) => s.text).join('').trim()}
+          {lineText(line.segments)}
         </Text>
       );
     }
-    const grid = isChordOnlyLine(line.segments) ? chordBars(line.segments) : null;
-    if (grid)
-      return (
-        <View key={key} style={styles.gridRow}>
-          <View style={styles.bars}>
-            {grid.bars.map((bar, b) => (
-              // Four equal bars per row (a musical phrase); chords inside a bar split it evenly.
-              <View
-                key={b}
-                style={[styles.bar, { borderColor: colors.muted }, b === grid.bars.length - 1 && styles.lastBar]}>
+    const renderBars = (grid: { bars: string[][]; rest: string }) => (
+      <View key={key} style={styles.gridRow}>
+        <View style={styles.bars}>
+          {grid.bars.map((bar, b) => (
+            // Four equal bars per row (a musical phrase); chords inside a bar read «Am - C».
+            <View
+              key={b}
+              style={[styles.bar, { borderColor: colors.muted }, b === grid.bars.length - 1 && styles.lastBar]}>
+              <Text numberOfLines={1} style={chordStyle}>
                 {bar.map((c, i) => (
-                  <Text key={i} {...chordAction(c)} numberOfLines={1} style={[chordStyle, { flex: 1 }]}>
-                    {mapChord(c)}
-                  </Text>
+                  <Fragment key={i}>
+                    {i > 0 && <Text style={{ color: colors.muted }}> - </Text>}
+                    <Text {...chordAction(c)}>{mapChord(c)}</Text>
+                  </Fragment>
                 ))}
-              </View>
-            ))}
-          </View>
-          {/* Always reserved, so bar columns line up across sections. */}
-          <Text style={[lyric, { color: colors.muted, width: fontSize * 2.2, textAlign: 'right' }]}>{grid.rest}</Text>
+              </Text>
+            </View>
+          ))}
         </View>
-      );
+        {/* Always reserved, so bar columns line up across sections. */}
+        <Text style={[lyric, { color: colors.muted, width: fontSize * 2.2, textAlign: 'right' }]}>{grid.rest}</Text>
+      </View>
+    );
+    const grid = isChordOnlyLine(line.segments) ? chordBars(line.segments, carriedChord(lines, key)) : null;
+    if (grid) return renderBars(grid);
     if (isChordOnlyLine(line.segments))
       return (
         <Text key={key} style={[lyric, { color: colors.muted }]}>
@@ -153,12 +166,18 @@ export function ChordSheet({
     const hasChords = line.segments.some((s) => s.chord);
     if (!showLyrics) {
       if (!hasChords) return null;
-      // A compact plan: lines with the same chords in a row become one line with «×N».
-      const chordsOf = (l: Line | undefined) => l?.type === 'lyrics' && !isChordOnlyLine(l.segments) ? l.segments.flatMap((s) => s.chord ? [s.chord] : []).join(' ') : null;
-      const own = chordsOf(line);
-      if (chordsOf(lines[key - 1]) === own) return null;
+      // A compact plan: lines with bar lines become bars; lines with the same chords in a row become one line with «×N».
+      const planOf = (i: number) => {
+        const l = lines[i];
+        if (l?.type !== 'lyrics' || isChordOnlyLine(l.segments)) return null;
+        return JSON.stringify(chordBars(l.segments, carriedChord(lines, i)) ?? l.segments.flatMap((s) => s.chord ? [s.chord] : []));
+      };
+      const own = planOf(key);
+      if (planOf(key - 1) === own) return null;
       let repeat = 1;
-      while (chordsOf(lines[key + repeat]) === own) repeat++;
+      while (planOf(key + repeat) === own) repeat++;
+      const bars = chordBars(line.segments, carriedChord(lines, key));
+      if (bars) return renderBars({ ...bars, rest: repeat > 1 ? `×${repeat}` : bars.rest });
       return (
         <Text key={key} style={[chordStyle, { marginBottom: 4 }]}>
           {line.segments.filter((s) => s.chord).map((s, i) => (
@@ -177,7 +196,9 @@ export function ChordSheet({
             {word.map((p, i) => (
               <View key={i}>
                 {hasChords && <Text {...(p.chord ? chordAction(p.chord) : {})} style={[chordStyle, styles.chord]}>{p.chord ? mapChord(p.chord) : ' '}</Text>}
-                <Text style={lyric}>{p.text}</Text>
+                <Text style={lyric}>
+                  {p.text.split(BAR_MARK_RE).map((part, j) => j % 2 ? <Text key={j} style={{ color: colors.muted }}>{part}</Text> : part)}
+                </Text>
               </View>
             ))}
           </View>

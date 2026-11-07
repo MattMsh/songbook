@@ -198,6 +198,7 @@ export default function EditScreen() {
             <Chip label={t('Перегляд')} active={tab === 'preview'} onPress={() => goTo('preview')} />
             {!isNew && <Chip label={t('Зміни')} active={tab === 'diff'} onPress={() => goTo('diff')} />}
           </Row>
+          {tab === 'text' && <Button small kind="ghost" title={t('Як писати пісні')} onPress={() => router.push('/song-format')} />}
           {isNew && <T muted>{t('1. Назва та параметри → 2. Блоки пісні → 3. Перевірка й збереження')}</T>}
           {stale && <Banner kind="warn" text={t('Сервер має новішу версію ({server}), ваші правки — від версії {base}.', { server: song!.version, base: baseVersion })} />}
           {tab === 'meta' && <MetaForm head={head} onChange={setHead} notation={parsed.meta.notation} chords={parsed.chords} />}

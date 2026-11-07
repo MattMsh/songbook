@@ -45,6 +45,14 @@ describe('PDF HTML', () => {
     expect(html).not.toContain('count-in');
     expect(html).not.toContain('Тональність:');
   });
+  it('mutes bar lines in musician lyrics and drops them from lyrics export', () => {
+    const songs = [{ chordpro: '| [C]Хочу | [Am]все [F]життя |\n| [Am] [C] | [G] |' }];
+    const html = buildPdfHtml({ ...document, songs });
+    expect(html).toContain('<span class="barline">|</span>');
+    expect(html).toContain('<span class="bar">Am - C</span>');
+    const lyrics = buildPdfHtml({ ...document, variant: 'lyrics', songs });
+    expect(lyrics).toContain('<div class="line">Хочу все життя</div>');
+  });
   it('preserves song order and plan metadata', () => {
     const html = buildPdfHtml({ ...document, serviceDate: '2026-10-25', leader: 'Олена', notes: 'Тихий вступ',
       songs: [{ chordpro: '{title: Перша}\n[A]А' }, { chordpro: '{title: Друга}\n[B]Б' }] });

@@ -230,8 +230,18 @@ export function lyricsText(song: ParsedSong): string {
   const out: string[] = [];
   for (const s of song.sections)
     for (const l of s.lines)
-      if (l.type === 'lyrics' && !isChordOnlyLine(l.segments)) out.push(l.segments.map((x) => x.text).join('').trim());
+      if (l.type === 'lyrics' && !isChordOnlyLine(l.segments)) out.push(lineText(l.segments));
   return out.filter(Boolean).join('\n');
+}
+
+/** A bar line in a lyric line: `|`, `||`, `|:`, `:|`. Captures, so `split` keeps the marks at odd indices. */
+export const BAR_MARK_RE = /(:?\|+:?)/;
+
+/** Words of a lyric line without chords and bar lines: `| [C]Хочу | жи|[F]ття |` → `Хочу життя`. */
+export function lineText(segments: Segment[]): string {
+  return segments.map((s) => s.text).join('')
+    .replace(/(\s*):?\|+:?(\s*)/g, (_, before: string, after: string) => before || after ? ' ' : '')
+    .trim();
 }
 
 /** True when a line holds only chords (and bar marks / repeat marks). */
@@ -240,26 +250,36 @@ export function isChordOnlyLine(segments: Segment[]): boolean {
 }
 
 /**
- * Bars of a chord-only line such as `| [Am] - [F] | [C] - [G] |`.
- * Chords inside one bar split it evenly. Null when the line has no bar lines.
+ * Bars of a line with bar lines: `| [Am] - [F] | [C] - [G] |` or `| [C]Хочу [G/B]все | [F]життя |`.
+ * A bar between two bar lines without a new chord repeats `carry`, the chord that still sounds.
+ * Words are dropped; only a trailing repeat mark such as `x2` stays in `rest`. Null when the line has no bar lines.
  */
-export function chordBars(segments: Segment[]): { bars: string[][]; rest: string } | null {
+export function chordBars(segments: Segment[], carry: string | null = null): { bars: string[][]; rest: string } | null {
   const tokens: (string | null)[] = []; // chord, or null for a bar line
   let rest = '';
   for (const s of segments) {
     if (s.chord) tokens.push(s.chord);
-    for (const part of s.text.split(/(\|+)/)) {
-      if (part.startsWith('|')) tokens.push(null);
+    s.text.split(BAR_MARK_RE).forEach((part, i) => {
+      if (i % 2) tokens.push(null);
       else rest += ' ' + part;
-    }
+    });
   }
   if (!tokens.includes(null)) return null;
-  const bars: string[][] = [[]];
+  const chunks: string[][] = [[]];
   for (const t of tokens) {
-    if (t === null) bars.push([]);
-    else bars.at(-1)!.push(t);
+    if (t === null) chunks.push([]);
+    else chunks.at(-1)!.push(t);
   }
-  return { bars: bars.filter((b) => b.length), rest: rest.replace(/[\s:\-–—]+/g, ' ').trim() };
+  const bars = chunks.flatMap((bar, i) => {
+    if (bar.length) {
+      carry = bar.at(-1)!;
+      return [bar];
+    }
+    // Text before the first or after the last bar line is not a bar.
+    return i > 0 && i < chunks.length - 1 ? [carry ? [carry] : []] : [];
+  });
+  rest = isChordOnlyLine(segments) ? rest.replace(/[\s:\-–—]+/g, ' ').trim() : /(?:^|\s)([x×х]\d+)\s*$/iu.exec(rest)?.[1] ?? '';
+  return { bars, rest };
 }
 
 /** Denormalized columns the server stores next to the ChordPro source. */

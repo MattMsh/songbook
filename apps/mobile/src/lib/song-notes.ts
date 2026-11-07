@@ -1,4 +1,4 @@
-import { DEFAULT_PART_TYPES, matchPart, type ParsedSong, type Section } from '@songbook/shared';
+import { DEFAULT_PART_TYPES, lineText, matchPart, type ParsedSong, type Section } from '@songbook/shared';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 export interface NoteSection {
@@ -49,7 +49,7 @@ export function noteSections(song: ParsedSong): NoteSection[] {
       kind: section.kind,
       sectionIndex: section.sectionIndex,
       endLine: section.endLine,
-      preview: section.lines.filter((l) => l.type === 'lyrics').map((l) => l.segments.map((s) => s.text).join('')).join('\n').slice(0, 240),
+      preview: section.lines.filter((l) => l.type === 'lyrics').map((l) => lineText(l.segments)).join('\n').slice(0, 240),
     };
   });
 }
