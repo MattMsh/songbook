@@ -18,10 +18,20 @@ export const loadUser = createMiddleware<AppEnv>(async (c, next) => {
       .bind(await sha256(token), Date.now())
       .first<UserRow>();
     if (row) user = toUser(row, c.env);
+    else user = await adminKeyUser(c.env, token);
   }
   c.set('user', user);
   await next();
 });
+
+/** The web admin signs in with the ADMIN_KEY secret and acts as the first admin account. */
+async function adminKeyUser(env: Bindings, token: string): Promise<User | null> {
+  const key = env.ADMIN_KEY ?? '';
+  // Hashing both sides keeps the comparison time independent of the key.
+  if (key.length < 32 || (await sha256(token)) !== (await sha256(key))) return null;
+  const { results } = await env.DB.prepare('SELECT * FROM users ORDER BY created_at').all<UserRow>();
+  return results.map((r) => toUser(r, env)).find((u) => u.role === 'admin') ?? null;
+}
 
 export const requireUser = (c: Ctx): User => c.get('user') ?? fail(401, 'unauthorized');
 

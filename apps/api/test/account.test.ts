@@ -50,6 +50,21 @@ async function fixture() {
   return { sqlite, request, remove, env };
 }
 
+describe('web admin key', () => {
+  it('acts as the first admin account only with a long matching key', async () => {
+    const { env, request } = await fixture();
+    const key = 'k'.repeat(32);
+    const me = async (token: string) => (await request('/me', token)).json() as Promise<{ user?: { id: string } }>;
+    Object.assign(env, { ADMIN_EMAILS: 'two@example.com', ADMIN_KEY: key });
+    expect((await me(key)).user?.id).toBe('u2');
+    expect((await request('/me', key + 'x')).status).toBe(401);
+    Object.assign(env, { ADMIN_KEY: 'short' });
+    expect((await request('/me', 'short')).status).toBe(401);
+    Object.assign(env, { ADMIN_EMAILS: '', ADMIN_KEY: key });
+    expect((await request('/me', key)).status).toBe(401);
+  });
+});
+
 describe('authenticated self-account deletion', () => {
   it('removes personal records and all sessions, anonymizes references, and preserves communal content and other accounts', async () => {
     const { sqlite, request, remove } = await fixture();

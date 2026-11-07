@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Songbook · Адмінка</title>
+  <style>
+    :root { color-scheme: light dark; --accent: #0a84ff; --line: #8884; --muted: #888; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; height: 100vh; display: flex; flex-direction: column; }
+    header { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    header h1 { font-size: 16px; margin: 0 auto 0 0; }
+    button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: none; color: inherit; cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.danger { color: #e5484d; }
+    button:disabled { opacity: .4; cursor: default; }
+    input, textarea { font: inherit; color: inherit; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+    main { flex: 1; display: flex; min-height: 0; }
+    nav { width: 280px; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+    nav input { margin: 8px; }
+    nav ul { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
+    nav li button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; padding: 6px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    nav li button:hover { background: #8882; }
+    nav li button[aria-current="true"] { background: var(--accent); color: #fff; }
+    #editor { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    #toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    #status { margin-right: auto; color: var(--muted); }
+    .error, #status.error { color: #e5484d; }
+    #panes { flex: 1; display: flex; min-height: 0; }
+    #source { flex: 1; resize: none; border: 0; border-radius: 0; padding: 12px; font-family: ui-monospace, monospace; font-size: 14px; line-height: 1.5; outline: none; }
+    #preview { flex: 1; border: 0; border-left: 1px solid var(--line); background: #fff; }
+    #empty { margin: auto; color: var(--muted); }
+    #login { margin: auto; display: flex; flex-direction: column; gap: 8px; width: 360px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <form id="login" hidden>
+    <h1>Songbook · Адмінка</h1>
+    <label for="key">Ключ адміністратора</label>
+    <input id="key" type="password" autocomplete="current-password" required>
+    <button class="primary">Увійти</button>
+    <p id="login-error" class="error" role="alert"></p>
+  </form>
+  <header id="app-header" hidden>
+    <h1>Songbook · Адмінка</h1>
+    <button id="new">Нова пісня</button>
+    <button id="logout">Вийти</button>
+  </header>
+  <main id="app" hidden>
+    <nav>
+      <input id="search" type="search" placeholder="Номер або назва" aria-label="Пошук пісні">
+      <ul id="list"></ul>
+    </nav>
+    <section id="editor">
+      <p id="empty">Виберіть пісню зліва або створіть нову.</p>
+      <div id="toolbar" hidden>
+        <span id="status" role="status"></span>
+        <button id="reload" hidden>Перезавантажити пісню</button>
+        <button id="delete" class="danger">Видалити</button>
+        <button id="save" class="primary">Зберегти</button>
+      </div>
+      <div id="panes" hidden>
+        <textarea id="source" spellcheck="false" aria-label="Текст пісні у форматі ChordPro"></textarea>
+        <iframe id="preview" sandbox title="Попередній перегляд"></iframe>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/admin/app.js"></script>
+</body>
+</html>

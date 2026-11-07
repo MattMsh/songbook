@@ -1,2 +1,4 @@
 # Copy to .dev.vars. Without a key, login emails go to the wrangler console.
 RESEND_API_KEY=
+# Web admin key at /admin, at least 32 characters. Generate one: openssl rand -hex 32
+ADMIN_KEY=

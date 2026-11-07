@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Role, SyncSong, User } from '@songbook/shared';
 
-export type Bindings = Env & { RESEND_API_KEY?: string };
+export type Bindings = Env & { RESEND_API_KEY?: string; ADMIN_KEY?: string };
 export type AppEnv = { Bindings: Bindings; Variables: { user: User | null } };
 export type Ctx = Context<AppEnv>;
 

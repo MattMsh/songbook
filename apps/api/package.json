@@ -7,7 +7,7 @@
     "dev": "wrangler dev --ip 0.0.0.0",
     "db:migrate": "wrangler d1 migrations apply songbook --local",
     "db:seed": "wrangler d1 execute songbook --local --file seed.sql",
-    "typecheck": "wrangler types && tsc --noEmit",
+    "typecheck": "wrangler types && tsc --noEmit && tsc --noEmit -p admin",
     "test": "vitest run",
     "smoke": "bash scripts/smoke.sh"
   },
@@ -17,6 +17,7 @@
     "jose": "^6.2.13"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "wrangler": "^4.152.0"
   }
 }
