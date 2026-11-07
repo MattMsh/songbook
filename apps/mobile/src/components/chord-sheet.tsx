@@ -195,7 +195,11 @@ export function ChordSheet({
           <View key={w} style={styles.word}>
             {word.map((p, i) => (
               <View key={i}>
-                {hasChords && <Text {...(p.chord ? chordAction(p.chord) : {})} style={[chordStyle, styles.chord]}>{p.chord ? mapChord(p.chord) : ' '}</Text>}
+                {hasChords && <Text {...(p.chord ? chordAction(p.chord) : {})} style={[chordStyle, styles.chord]}>
+                  {p.chord ? mapChord(p.chord) : ' '}
+                  {/* Chords on one spot, such as `[Am][G]`, read «Am - G» like chords in one bar. */}
+                  {p.chord && !p.text && word[i + 1]?.chord && <Text style={{ color: colors.muted }}> -</Text>}
+                </Text>}
                 <Text style={lyric}>
                   {p.text.split(BAR_MARK_RE).map((part, j) => j % 2 ? <Text key={j} style={{ color: colors.muted }}>{part}</Text> : part)}
                 </Text>
