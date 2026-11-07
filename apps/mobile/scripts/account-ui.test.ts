@@ -54,7 +54,7 @@ class ApiError extends Error { constructor(public code: string) { super(code); }
 let ui: any;
 beforeEach(() => {
   vi.clearAllMocks(); alerts.length = 0; native.Platform.OS = 'ios';
-  ui = load('components/ui.tsx', { 'expo-symbols': { SymbolView: 'SymbolView' }, 'react-native': native, '@/lib/settings': theme });
+  ui = load('components/ui.tsx', { 'expo-symbols': { SymbolView: 'SymbolView' }, 'react-native': native, 'react-native-safe-area-context': { useSafeAreaInsets: () => ({ bottom: 0 }) }, '@/lib/settings': theme });
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -80,7 +80,7 @@ function setupProfile(pending = 0, recovery: boolean | Error = false) {
 describe('shared accessible controls', () => {
   it.each(['ios', 'android'])('preserves %s minimum targets for small, icon-only and chip controls', (platform) => {
     native.Platform.OS = platform;
-    const controls = load('components/ui.tsx', { 'expo-symbols': { SymbolView: 'SymbolView' }, 'react-native': native, '@/lib/settings': theme });
+    const controls = load('components/ui.tsx', { 'expo-symbols': { SymbolView: 'SymbolView' }, 'react-native': native, 'react-native-safe-area-context': { useSafeAreaInsets: () => ({ bottom: 0 }) }, '@/lib/settings': theme });
     const minimum = platform === 'android' ? 48 : 44;
     for (const control of [controls.Button({ small: true, icon: 'add', label: 'Add', onPress: vi.fn() }), controls.Button({ small: true, title: 'Long action', onPress: vi.fn() }), controls.Chip({ label: 'Long choice', onPress: vi.fn() })]) {
       const style = Object.assign({}, ...control.props.style({ pressed: false }).filter(Boolean));

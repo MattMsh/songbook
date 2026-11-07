@@ -13,6 +13,7 @@ import {
   type TextProps,
   type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/lib/settings';
 
 /** One entry per meaning: SF Symbol on iOS, Material Symbol on Android. */
@@ -169,6 +170,17 @@ export function Card({ children }: { children: ReactNode }) {
   return <View style={[styles.card, { backgroundColor: colors.card }]}>{children}</View>;
 }
 
+/** Pinned under the content, not over it, so the last list row stays visible. */
+export function BottomBar({ children }: { children: ReactNode }) {
+  const { colors } = useTheme();
+  const { bottom } = useSafeAreaInsets();
+  return (
+    <View style={{ padding: 16, paddingBottom: Math.max(bottom, 16), gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, backgroundColor: colors.bg }}>
+      {children}
+    </View>
+  );
+}
+
 export function Banner({ text, kind = 'info' }: { text: string; kind?: 'info' | 'warn' }) {
   const { colors } = useTheme();
   return (
@@ -181,19 +193,26 @@ export function Banner({ text, kind = 'info' }: { text: string; kind?: 'info' | 
 export function ListItem({
   title,
   subtitle,
+  left,
   right,
   onPress,
+  accessibilityState,
 }: {
   title: string;
   subtitle?: string | null;
+  left?: ReactNode;
   right?: ReactNode;
   onPress?: () => void;
+  accessibilityState?: { checked?: boolean };
 }) {
   const { colors } = useTheme();
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole={accessibilityState ? 'checkbox' : undefined}
+      accessibilityState={accessibilityState}
       style={({ pressed }) => [styles.item, { borderColor: colors.separator, opacity: pressed ? 0.6 : 1 }]}>
+      {left && <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">{left}</View>}
       <View style={{ flex: 1 }}>
         <T style={{ fontSize: 17 }} numberOfLines={1}>
           {title}

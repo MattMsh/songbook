@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { confirmDeleteAlbum, promptRenameAlbum } from '@/components/album-actions';
 import { AlbumSongs } from '@/components/album-songs';
-import { Banner, Button, Field, Row, Screen, T } from '@/components/ui';
+import { Banner, BottomBar, Button, Field, Row, Screen, T } from '@/components/ui';
 import { saveAlbumPlan, setAlbumOrder, toggleAlbumSong } from '@/lib/albums';
 import { albumSongs, getAlbum, getAlbumPlan, useRevision, type SongListItem } from '@/lib/db';
 import { useT, useTheme } from '@/lib/settings';
@@ -146,8 +146,11 @@ export default function AlbumScreen() {
                   onOpen={(songId) => router.push({ pathname: '/song/[id]', params: { id: songId, album: id } })}
                   onReorder={reorder} onRemove={removeSong} />
               ) : (
-                <T muted style={{ textAlign: 'center', padding: 32 }}>{t('Додайте пісні кнопкою «+» на екрані пісні.')}</T>
+                <T muted style={{ textAlign: 'center', padding: 32, flex: 1 }}>{t('Альбом порожній')}</T>
               )}
+              <BottomBar>
+                <Button title={t('Редагувати пісні')} onPress={() => router.push({ pathname: '/album-songs/[id]', params: { id } })} />
+              </BottomBar>
             </>
           )}
         </>

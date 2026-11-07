@@ -467,6 +467,32 @@ export async function toggleAlbumSong(db: SQLiteDatabase, albumId: number, songI
   bumpRevision();
 }
 
+/** Applies one edit session: `add` goes to the end in the given order. Songs added or removed meanwhile by others stay. */
+export async function editAlbumSongs(db: SQLiteDatabase, albumId: number, add: string[], remove: string[]) {
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const album = await getAlbum(tx, albumId);
+    if (!album) throw new Error('Album not found');
+    const current = await albumSongIds(tx, albumId);
+    const plan = await getAlbumPlan(tx, albumId);
+    for (const songId of remove) {
+      await tx.runAsync('DELETE FROM album_songs WHERE album_id = ? AND song_id = ?', albumId, songId);
+      delete plan.songSettings?.[songId];
+    }
+    for (const songId of add) {
+      if (current.includes(songId)) continue;
+      if (!(await getSong(tx, songId))) throw new Error('Song not found');
+      if (album.remote_id && songId.startsWith('share:')) throw new Error('snapshot_in_shared_album');
+      await tx.runAsync(
+        `INSERT OR IGNORE INTO album_songs (album_id, song_id, position)
+         VALUES (?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM album_songs WHERE album_id = ?))`,
+        albumId, songId, albumId,
+      );
+    }
+    await tx.runAsync('UPDATE albums SET plan = ?, plan_pending = plan_pending + 1 WHERE id = ?', JSON.stringify(plan), albumId);
+  });
+  bumpRevision();
+}
+
 /** Saves the album order: `ids` lists the album's songs from first to last. */
 export async function setAlbumOrder(db: SQLiteDatabase, albumId: number, ids: string[]) {
   await db.withExclusiveTransactionAsync(async (tx) => {

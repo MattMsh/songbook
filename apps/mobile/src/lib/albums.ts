@@ -109,6 +109,11 @@ export async function toggleAlbumSong(db: SQLiteDatabase, albumId: number, songI
   await push(db, albumId);
 }
 
+export async function editAlbumSongs(db: SQLiteDatabase, albumId: number, add: string[], remove: string[]) {
+  await local.editAlbumSongs(db, albumId, add, remove);
+  await push(db, albumId);
+}
+
 export async function setAlbumOrder(db: SQLiteDatabase, albumId: number, ids: string[]) {
   await local.setAlbumOrder(db, albumId, ids);
   await push(db, albumId);

@@ -2,7 +2,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { applySharedAlbums, applySyncPage, albumSongIds, createAlbum, getAlbumPlan, getAlbumSongSettings, getOverride,
+import { applySharedAlbums, applySyncPage, albumSongIds, createAlbum, editAlbumSongs, getAlbumPlan, getAlbumSongSettings, getOverride,
   migrate, resetSync, getPendingSharedAlbumCount, initializeSharedAlbumOwner, restoreSharedAlbumDrafts, discardQuarantinedAlbumDrafts, getCursor, saveAlbumPlan, saveAlbumSongSettings, saveOverride, setAlbumOrder, toggleAlbumSong } from '../src/lib/db';
 
 vi.mock('react-native', () => ({ Alert: { alert: vi.fn() } }));
@@ -57,6 +57,23 @@ describe('local plan persistence', () => {
     await saveAlbumSongSettings(db, id, 'a', { transpose: 2 });
     await saveAlbumSongSettings(db, id, 'a', { bpm: undefined });
     expect(await getAlbumSongSettings(db, id, 'a')).toEqual({ transpose: 2, capo: -1, notes: 'Keep' });
+  });
+
+  it('applies an edit session as a diff and drops settings of removed songs', async () => {
+    const { db, sql } = await seeded();
+    sql.prepare(`INSERT INTO songs(id,title,chordpro,version,updated_at,title_norm,lyrics_norm) VALUES ('c','c','',1,1,'c','')`).run();
+    const id = await createAlbum(db, 'Sunday');
+    await toggleAlbumSong(db, id, 'a');
+    await saveAlbumSongSettings(db, id, 'a', { transpose: 2 });
+    // Someone else adds 'b' while the edit page is open.
+    await toggleAlbumSong(db, id, 'b');
+    await editAlbumSongs(db, id, ['c', 'share:import:a', 'b'], ['a']);
+    expect(await albumSongIds(db, id)).toEqual(['b', 'c', 'share:import:a']);
+    expect(await getAlbumSongSettings(db, id, 'a')).toEqual({});
+    await expect(editAlbumSongs(db, id, ['missing'], ['b'])).rejects.toThrow('Song not found');
+    expect(await albumSongIds(db, id)).toEqual(['b', 'c', 'share:import:a']);
+    const shared = (await applySharedAlbums(db, [{ id: 'r', name: 'Plan', songIds: ['a'], createdAt: 1, updatedAt: 1 }])).get('r')!;
+    await expect(editAlbumSongs(db, shared, ['share:import:a'], [])).rejects.toThrow('snapshot_in_shared_album');
   });
 
   it('rejects imported snapshot IDs in shared albums without changing membership', async () => {
