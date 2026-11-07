@@ -234,6 +234,20 @@ export function lyricsText(song: ParsedSong): string {
   return out.filter(Boolean).join('\n');
 }
 
+/** Chords on one spot (`[Am][G]Ісус`) share one column, so the words keep their place under them. */
+export function stackChords(segments: Segment[]): { chords: string[]; text: string }[] {
+  const out: { chords: string[]; text: string }[] = [];
+  let chords: string[] = [];
+  segments.forEach((s, i) => {
+    if (s.chord !== null) chords.push(s.chord);
+    if (s.text || i === segments.length - 1) {
+      out.push({ chords, text: s.text });
+      chords = [];
+    }
+  });
+  return out;
+}
+
 /** A bar line in a lyric line: `|`, `||`, `|:`, `:|`. Captures, so `split` keeps the marks at odd indices. */
 export const BAR_MARK_RE = /(:?\|+:?)/;
 

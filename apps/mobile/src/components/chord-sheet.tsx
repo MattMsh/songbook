@@ -1,4 +1,4 @@
-import { BAR_MARK_RE, chordBars, isChordOnlyLine, lineText, type Line, type ParsedSong, type Segment } from '@songbook/shared';
+import { BAR_MARK_RE, chordBars, isChordOnlyLine, lineText, stackChords, type Line, type ParsedSong } from '@songbook/shared';
 import { Fragment, useState, type ReactNode } from 'react';
 import { noteSections } from '@/lib/song-notes';
 import { StyleSheet, Text, View } from 'react-native';
@@ -8,15 +8,15 @@ import { ChordDiagram } from './chord-diagram';
 import { ChordGrid } from './chord-grid';
 
 interface Part {
-  chord: string | null;
+  chords: string[];
   text: string;
 }
 
 /**
- * Groups segments into words so a line wraps only between words and a chord
- * stays attached to the first word of its segment.
+ * Groups segments into words so a line wraps only between words and chords
+ * stay attached to the first word of their segment.
  */
-export function toWords(segments: Segment[]): Part[][] {
+export function toWords(segments: Part[]): Part[][] {
   const words: Part[][] = [];
   let cur: Part[] = [];
   for (const seg of segments) {
@@ -27,7 +27,7 @@ export function toWords(segments: Segment[]): Part[][] {
         words.push(cur);
         cur = [];
       }
-      cur.push({ chord: i === 0 ? seg.chord : null, text });
+      cur.push({ chords: i === 0 ? seg.chords : [], text });
     });
   }
   if (cur.length) words.push(cur);
@@ -191,14 +191,12 @@ export function ChordSheet({
     }
     return (
       <View key={key} style={styles.line}>
-        {toWords(line.segments).map((word, w) => (
+        {toWords(stackChords(line.segments)).map((word, w) => (
           <View key={w} style={styles.word}>
             {word.map((p, i) => (
               <View key={i}>
-                {hasChords && <Text {...(p.chord ? chordAction(p.chord) : {})} style={[chordStyle, styles.chord]}>
-                  {p.chord ? mapChord(p.chord) : ' '}
-                  {/* Chords on one spot, such as `[Am][G]`, read «Am - G» like chords in one bar. */}
-                  {p.chord && !p.text && word[i + 1]?.chord && <Text style={{ color: colors.muted }}> -</Text>}
+                {hasChords && <Text style={[chordStyle, styles.chord]}>
+                  {p.chords.length ? p.chords.map((c, j) => <Text key={j} {...chordAction(c)}>{j ? ' ' : ''}{mapChord(c)}</Text>) : ' '}
                 </Text>}
                 <Text style={lyric}>
                   {p.text.split(BAR_MARK_RE).map((part, j) => j % 2 ? <Text key={j} style={{ color: colors.muted }}>{part}</Text> : part)}
